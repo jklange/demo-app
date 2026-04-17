@@ -23,10 +23,14 @@ Everything lives in `index.html`:
 
 ## Git Workflow
 
-After any change: commit with a descriptive message and push so GitHub stays current.
+**After completing any unit of work, always commit and push to GitHub.** This ensures work is never lost and the repo always reflects the current state.
+
+- Commit frequently — after each meaningful change, not just at the end of a session
+- Write descriptive commit messages that explain what changed and why
+- Always push immediately after committing
 
 ```bash
 git add .
-git commit -m "description of change"
+git commit -m "short description of what changed"
 git push
 ```
