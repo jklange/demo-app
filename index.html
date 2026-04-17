@@ -216,6 +216,21 @@
     </div>
   </div>
 
+  <!-- Counter 4 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="label">Counter 4</span>
+      <button class="btn sm" onclick="resetCounter(4)">Reset</button>
+    </div>
+    <div class="counter-display">
+      <div class="counter-num" id="counter-num-4">0</div>
+    </div>
+    <div class="counter-btns">
+      <button class="btn outline large" onclick="adjustCounter(4, -1)">−</button>
+      <button class="btn large" onclick="adjustCounter(4, 1)">+</button>
+    </div>
+  </div>
+
   <!-- Todo -->
   <div class="card tall">
     <div class="card-header">
@@ -303,7 +318,7 @@
   setInterval(updateClock, 1000);
 
   // Counters
-  const counts = { 1: 0, 2: 0, 3: 0 };
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
   function adjustCounter(id, d) {
     counts[id] += d;
     const el = document.getElementById('counter-num-' + id);
