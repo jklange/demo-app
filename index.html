@@ -920,6 +920,7 @@ function startRound() {
   G.currentBidder = G.bidStartIdx;
   G.highBid = null;
   G.bidPassed = [false, false, false, false, false, false];
+  G.bidActed = [false, false, false, false, false, false];
   G.playerBids = [null, null, null, null, null, null];
   G.trump = null;
   G.currentTrick = [];
@@ -937,43 +938,43 @@ function startRound() {
 }
 
 function advanceBid() {
-  // find next non-passed bidder
-  const allPassed = G.bidPassed.every(p => p);
-  if (allPassed) {
-    // forced bid on bid-start player
-    G.bidPassed[G.bidStartIdx] = false;
-    G.currentBidder = G.bidStartIdx;
+  // Skip players who have already had their turn
+  if (G.bidActed[G.currentBidder]) {
+    nextBidder();
+    return;
   }
 
-  // check if only one player left
-  const activeBidders = G.bidPassed.filter(p => !p).length;
-
-  if (activeBidders === 1 || (G.highBid && G.bidPassed[G.currentBidder] === false && allBidExceptWinner())) {
-    finishBidding();
-    return;
+  // All players have acted — end bidding (or force bid-start if nobody bid)
+  if (G.bidActed.every(a => a)) {
+    if (!G.highBid) {
+      // Everyone passed; bid-start must bid at least 60
+      G.bidActed[G.bidStartIdx] = false;
+      G.currentBidder = G.bidStartIdx;
+      // fall through to show bid or AI bid below
+    } else {
+      finishBidding();
+      return;
+    }
   }
 
   renderBidInfo();
 
-  if (G.currentBidder === 0 && !G.bidPassed[0]) {
-    // human's turn to bid
+  if (G.currentBidder === 0) {
     showBidPanel();
   } else {
-    if (G.bidPassed[G.currentBidder]) {
-      nextBidder();
-      return;
-    }
     // AI bids
     setTimeout(() => {
+      const mustBid = !G.highBid && G.currentBidder === G.bidStartIdx;
       const bid = aiChooseBid(G.currentBidder);
-      const mustBid = !G.highBid && G.currentBidder === G.bidStartIdx && G.bidPassed.filter(p => !p).length === 1;
       if (!bid && !mustBid) {
         G.bidPassed[G.currentBidder] = true;
+        G.bidActed[G.currentBidder] = true;
         G.playerBids[G.currentBidder] = 'pass';
         log(`Player ${G.currentBidder} passes.`);
-      } else if (bid || mustBid) {
+      } else {
         const finalBid = bid || { isMarks: false, amount: 60, trump: 0 };
         G.highBid = { player: G.currentBidder, ...finalBid };
+        G.bidActed[G.currentBidder] = true;
         G.playerBids[G.currentBidder] = finalBid;
         const bidStr = finalBid.isMarks ? `${finalBid.amount} mark(s)` : finalBid.amount;
         log(`Player ${G.currentBidder} bids ${bidStr} on ${TRUMP_NAMES[finalBid.trump]}.`, 'highlight');
@@ -985,16 +986,8 @@ function advanceBid() {
   }
 }
 
-function allBidExceptWinner() {
-  if (!G.highBid) return false;
-  for (let i = 0; i < 6; i++) {
-    if (i !== G.highBid.player && !G.bidPassed[i]) return false;
-  }
-  return true;
-}
-
 function checkBidEnd() {
-  if (allBidExceptWinner()) {
+  if (G.bidActed.every(a => a)) {
     finishBidding();
     return;
   }
@@ -1444,6 +1437,7 @@ function showBidPanel() {
       alert(`Bid must be between ${minNumeric} and 88.`); return;
     }
     G.highBid = { player: 0, isMarks: false, amount, trump };
+    G.bidActed[0] = true;
     G.playerBids[0] = { isMarks: false, amount, trump };
     log(`You bid ${amount} on ${TRUMP_NAMES[trump]}.`, 'highlight');
     hideBidPanel();
@@ -1462,6 +1456,7 @@ function showBidPanel() {
     btn.addEventListener('click', () => {
       const trump = selectedTrump;
       G.highBid = { player: 0, isMarks: true, amount: m, trump };
+      G.bidActed[0] = true;
       G.playerBids[0] = { isMarks: true, amount: m, trump };
       log(`You bid ${m} mark(s) on ${TRUMP_NAMES[trump]}.`, 'highlight');
       hideBidPanel();
@@ -1478,6 +1473,7 @@ function showBidPanel() {
       if (others === 0) { alert('You must bid at least 60 — no one else bid!'); return; }
     }
     G.bidPassed[0] = true;
+    G.bidActed[0] = true;
     G.playerBids[0] = 'pass';
     log('You pass.', 'bad');
     hideBidPanel();
