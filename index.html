@@ -63,7 +63,7 @@
       flex: 1;
       min-height: 0;
       display: grid;
-      grid-template-columns: 180px 145px 1fr 145px 200px;
+      grid-template-columns: 180px 170px 1fr 170px 200px;
       gap: 0;
       overflow: hidden;
     }
@@ -92,30 +92,34 @@
     .tricks-rows {
       flex: 1;
       overflow-y: auto;
-      padding: 4px 5px;
+      padding: 5px 5px;
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 6px;
     }
     .trick-row {
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: flex-start;
       gap: 2px;
       flex-shrink: 0;
+    }
+    .trick-dominoes-row {
+      display: flex;
+      gap: 2px;
     }
     .trick-pts-badge {
       font-size: 10px;
       color: var(--muted);
-      margin-left: 3px;
-      white-space: nowrap;
+      padding-left: 2px;
     }
 
-    /* mini domino override */
-    .domino.mini { width: 18px; height: 34px; border-radius: 3px; border-width: 1px; }
-    .domino.mini .pip-grid { width: 12px; height: 12px; }
-    .domino.mini.horizontal .pip-grid { width: 12px; height: 12px; }
-    .domino.mini .pip { width: 3px; height: 3px; }
-    .domino.mini .divider { margin: 0 2px; }
+    /* mini domino — ~70% of table size */
+    .domino.mini { width: 25px; height: 48px; border-radius: 4px; border-width: 1px; }
+    .domino.mini .pip-grid { width: 17px; height: 17px; }
+    .domino.mini.horizontal .pip-grid { width: 17px; height: 17px; }
+    .domino.mini .pip { width: 4px; height: 4px; }
+    .domino.mini .divider { margin: 0 3px; }
 
     /* ── LOG ── */
     #log-panel {
@@ -1266,11 +1270,14 @@ function renderTricksWon() {
     [...teamTricks].reverse().forEach(({ plays, pts }) => {
       const row = document.createElement('div');
       row.className = 'trick-row';
+      const dominoRow = document.createElement('div');
+      dominoRow.className = 'trick-dominoes-row';
       plays.forEach(({ domino }) => {
         const d = buildDomino(domino, false, false, G.trump !== null && isTrump(domino, G.trump));
         d.classList.add('mini');
-        row.appendChild(d);
+        dominoRow.appendChild(d);
       });
+      row.appendChild(dominoRow);
       const badge = document.createElement('span');
       badge.className = 'trick-pts-badge';
       badge.textContent = `${pts}pt`;
