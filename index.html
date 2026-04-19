@@ -61,11 +61,70 @@
     /* ── MAIN LAYOUT ── */
     #main {
       flex: 1;
+      min-height: 0;
       display: grid;
       grid-template-columns: 180px 1fr 200px;
       gap: 0;
       overflow: hidden;
     }
+
+    /* ── TRICKS WON ── */
+    #tricks-won {
+      height: 140px;
+      flex-shrink: 0;
+      display: flex;
+      background: var(--surface);
+      border-top: 2px solid var(--border);
+    }
+    .tricks-team-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .tricks-team-panel:first-child { border-right: 1px solid var(--border); }
+    .tricks-team-header {
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .tricks-team-header.teamA { color: var(--teamA); }
+    .tricks-team-header.teamB { color: var(--teamB); }
+    .tricks-team-header .trick-count { color: var(--muted); font-weight: 400; }
+    .tricks-rows {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .trick-row {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .trick-pts-badge {
+      font-size: 10px;
+      color: var(--muted);
+      margin-left: 4px;
+      white-space: nowrap;
+    }
+
+    /* mini domino override */
+    .domino.mini { width: 18px; height: 34px; border-radius: 3px; border-width: 1px; }
+    .domino.mini .pip-grid { width: 12px; height: 12px; }
+    .domino.mini.horizontal .pip-grid { width: 12px; height: 12px; }
+    .domino.mini .pip { width: 3px; height: 3px; }
+    .domino.mini .divider { margin: 0 2px; }
 
     /* ── LOG ── */
     #log-panel {
@@ -565,6 +624,18 @@
     <div style="display:flex;gap:8px">
       <button class="btn btn-gold" id="kitty-confirm">Confirm &amp; Lead</button>
     </div>
+  </div>
+</div>
+
+<!-- TRICKS WON -->
+<div id="tricks-won">
+  <div class="tricks-team-panel">
+    <div class="tricks-team-header teamA">Team A <span class="trick-count" id="tricks-a-count"></span></div>
+    <div class="tricks-rows" id="trick-rows-a"></div>
+  </div>
+  <div class="tricks-team-panel">
+    <div class="tricks-team-header teamB">Team B <span class="trick-count" id="tricks-b-count"></span></div>
+    <div class="tricks-rows" id="trick-rows-b"></div>
   </div>
 </div>
 
@@ -1092,6 +1163,7 @@ function resolveTrick() {
 
   renderTrickArea();
   renderScorePanel();
+  renderTricksWon();
 
   if (G.completedTricks.length === 9) {
     setTimeout(endRound, 600);
@@ -1182,8 +1254,39 @@ function renderAll() {
   renderHumanHand();
   renderScorePanel();
   renderBidInfo();
+  renderTricksWon();
   document.getElementById('phase-display').textContent = G.phase.charAt(0).toUpperCase() + G.phase.slice(1);
   document.getElementById('round-info').textContent = `Round ${G.roundNum} · ${G.phase}`;
+}
+
+function renderTricksWon() {
+  [0, 1].forEach(teamIdx => {
+    const letter = teamIdx === 0 ? 'a' : 'b';
+    const rowsEl = document.getElementById(`trick-rows-${letter}`);
+    const countEl = document.getElementById(`tricks-${letter}-count`);
+    rowsEl.innerHTML = '';
+
+    const teamTricks = G.completedTricks.filter(t => TEAM[t.winner] === teamIdx);
+    countEl.textContent = teamTricks.length
+      ? `${teamTricks.length} trick${teamTricks.length > 1 ? 's' : ''} · ${G.teamTrickPts[teamIdx]} pts`
+      : '';
+
+    // newest on top: render in reverse chronological order
+    [...teamTricks].reverse().forEach(({ plays, pts }) => {
+      const row = document.createElement('div');
+      row.className = 'trick-row';
+      plays.forEach(({ domino }) => {
+        const d = buildDomino(domino, false, false, G.trump !== null && isTrump(domino, G.trump));
+        d.classList.add('mini');
+        row.appendChild(d);
+      });
+      const badge = document.createElement('span');
+      badge.className = 'trick-pts-badge';
+      badge.textContent = `${pts}pt`;
+      row.appendChild(badge);
+      rowsEl.appendChild(row);
+    });
+  });
 }
 
 function renderScoreBar() {
