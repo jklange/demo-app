@@ -130,6 +130,15 @@
       font-size: 10px;
       color: var(--muted);
     }
+    .bid-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.5);
+      color: var(--gold);
+      white-space: nowrap;
+    }
+    .bid-badge.passed { color: var(--muted); }
 
     /* face-down domino pile */
     .hand-pile {
@@ -298,6 +307,7 @@
       z-index: 100;
     }
     .overlay.hidden { display: none; }
+    #bid-overlay { background: transparent; }
     .panel {
       background: var(--surface2);
       border: 1px solid var(--border);
@@ -486,6 +496,7 @@
     <!-- AI player areas positioned by JS -->
     <div id="trick-area"></div>
     <div id="human-hand-area">
+      <div id="human-bid-badge" class="bid-badge" style="display:none"></div>
       <div style="font-size:11px;color:var(--muted)" id="human-hint"></div>
       <div id="human-hand"></div>
     </div>
@@ -909,6 +920,7 @@ function startRound() {
   G.currentBidder = G.bidStartIdx;
   G.highBid = null;
   G.bidPassed = [false, false, false, false, false, false];
+  G.playerBids = [null, null, null, null, null, null];
   G.trump = null;
   G.currentTrick = [];
   G.completedTricks = [];
@@ -957,13 +969,16 @@ function advanceBid() {
       const mustBid = !G.highBid && G.currentBidder === G.bidStartIdx && G.bidPassed.filter(p => !p).length === 1;
       if (!bid && !mustBid) {
         G.bidPassed[G.currentBidder] = true;
+        G.playerBids[G.currentBidder] = 'pass';
         log(`Player ${G.currentBidder} passes.`);
       } else if (bid || mustBid) {
         const finalBid = bid || { isMarks: false, amount: 60, trump: 0 };
         G.highBid = { player: G.currentBidder, ...finalBid };
+        G.playerBids[G.currentBidder] = finalBid;
         const bidStr = finalBid.isMarks ? `${finalBid.amount} mark(s)` : finalBid.amount;
         log(`Player ${G.currentBidder} bids ${bidStr} on ${TRUMP_NAMES[finalBid.trump]}.`, 'highlight');
       }
+      renderPlayerAreas();
       renderBidInfo();
       checkBidEnd();
     }, aiDelay());
@@ -1220,6 +1235,24 @@ function renderPlayerAreas() {
     count.textContent = `${G.hands[p].length} tiles`;
     area.appendChild(count);
 
+    if (G.phase === 'bid') {
+      const bid = G.playerBids ? G.playerBids[p] : null;
+      if (bid || G.currentBidder === p) {
+        const badge = document.createElement('div');
+        if (bid === 'pass') {
+          badge.className = 'bid-badge passed';
+          badge.textContent = 'Pass';
+        } else if (bid) {
+          badge.className = 'bid-badge';
+          badge.textContent = bid.isMarks ? `${bid.amount}mk ${TRUMP_NAMES[bid.trump]}` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}`;
+        } else {
+          badge.className = 'bid-badge';
+          badge.textContent = '...';
+        }
+        area.appendChild(badge);
+      }
+    }
+
     // face-down tiles
     const pile = document.createElement('div');
     pile.className = 'hand-pile';
@@ -1239,6 +1272,25 @@ function renderPlayerAreas() {
   document.getElementById('human-hint').textContent =
     G.awaitingHuman ? 'Your turn — click a highlighted domino' :
     G.phase === 'play' ? 'Waiting...' : '';
+
+  // player 0 bid badge
+  const p0Badge = document.getElementById('human-bid-badge');
+  if (G.phase === 'bid' && G.playerBids) {
+    const bid = G.playerBids[0];
+    if (bid === 'pass') {
+      p0Badge.className = 'bid-badge passed';
+      p0Badge.textContent = 'Pass';
+      p0Badge.style.display = '';
+    } else if (bid) {
+      p0Badge.className = 'bid-badge';
+      p0Badge.textContent = bid.isMarks ? `${bid.amount}mk ${TRUMP_NAMES[bid.trump]}` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}`;
+      p0Badge.style.display = '';
+    } else {
+      p0Badge.style.display = 'none';
+    }
+  } else {
+    p0Badge.style.display = 'none';
+  }
 }
 
 function renderTrickArea() {
@@ -1392,8 +1444,10 @@ function showBidPanel() {
       alert(`Bid must be between ${minNumeric} and 88.`); return;
     }
     G.highBid = { player: 0, isMarks: false, amount, trump };
+    G.playerBids[0] = { isMarks: false, amount, trump };
     log(`You bid ${amount} on ${TRUMP_NAMES[trump]}.`, 'highlight');
     hideBidPanel();
+    renderPlayerAreas();
     checkBidEnd();
   };
 
@@ -1408,8 +1462,10 @@ function showBidPanel() {
     btn.addEventListener('click', () => {
       const trump = selectedTrump;
       G.highBid = { player: 0, isMarks: true, amount: m, trump };
+      G.playerBids[0] = { isMarks: true, amount: m, trump };
       log(`You bid ${m} mark(s) on ${TRUMP_NAMES[trump]}.`, 'highlight');
       hideBidPanel();
+      renderPlayerAreas();
       checkBidEnd();
     });
     marksRow.appendChild(btn);
@@ -1422,8 +1478,10 @@ function showBidPanel() {
       if (others === 0) { alert('You must bid at least 60 — no one else bid!'); return; }
     }
     G.bidPassed[0] = true;
+    G.playerBids[0] = 'pass';
     log('You pass.', 'bad');
     hideBidPanel();
+    renderPlayerAreas();
     nextBidder();
   };
 }
