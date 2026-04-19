@@ -148,21 +148,8 @@
       height: 16px;
     }
 
-    /* trick area */
-    #trick-area {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 300px;
-      height: 220px;
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      grid-template-rows: 1fr 1fr;
-      gap: 6px;
-      align-items: center;
-      justify-items: center;
-    }
+    /* trick area — now just a transparent layer; dominoes positioned absolutely by JS */
+    #trick-area { display: none; }
 
     /* ── DOMINO TILE ── */
     .domino {
@@ -623,16 +610,15 @@ const SEAT_POSITIONS = [
   { top:'38%', right:'4%' },    // 5
 ];
 
-const TRICK_SLOTS = [
-  { gridColumn:2, gridRow:1 }, // player 3 (top)
-  { gridColumn:1, gridRow:1 }, // player 4 (top-left from center)
-  { gridColumn:3, gridRow:1 }, // player 5 (top-right from center)
-  { gridColumn:1, gridRow:2 }, // player 2
-  { gridColumn:3, gridRow:2 }, // player 1
-  { gridColumn:2, gridRow:2 }, // player 0 (bottom)
+// Absolute position on #table + rotation so domino top faces center
+const TRICK_SLOT_POSITIONS = [
+  { top:'72%', left:'50%', rotate:   0 }, // P0: bottom-center, points up
+  { top:'68%', left:'22%', rotate: -30 }, // P1: bottom-left, angled toward center
+  { top:'42%', left:'16%', rotate: -90 }, // P2: left, points right
+  { top:'18%', left:'30%', rotate: 150 }, // P3: top-left, points down-right
+  { top:'18%', left:'70%', rotate:-150 }, // P4: top-right, points down-left
+  { top:'42%', left:'84%', rotate:  90 }, // P5: right, points left
 ];
-// maps player index → trick area grid slot
-const PLAYER_TRICK_SLOT = [5, 4, 3, 0, 1, 2];
 
 // ─────────────────────────────────────────────
 // GAME STATE
@@ -1225,16 +1211,17 @@ function renderPlayerAreas() {
 }
 
 function renderTrickArea() {
-  const area = document.getElementById('trick-area');
-  area.innerHTML = '';
+  document.querySelectorAll('.trick-domino-play').forEach(el => el.remove());
+  const table = document.getElementById('table');
   G.currentTrick.forEach(({ player, domino }) => {
-    const slot = PLAYER_TRICK_SLOT[player];
-    const slotInfo = TRICK_SLOTS[slot];
+    const pos = TRICK_SLOT_POSITIONS[player];
     const wrap = document.createElement('div');
-    wrap.style.gridColumn = slotInfo.gridColumn;
-    wrap.style.gridRow = slotInfo.gridRow;
-    wrap.appendChild(buildDomino(domino, false, false, false));
-    area.appendChild(wrap);
+    wrap.className = 'trick-domino-play';
+    wrap.style.cssText = `position:absolute; top:${pos.top}; left:${pos.left};
+      transform: translate(-50%,-50%) rotate(${pos.rotate}deg);
+      z-index:10; pointer-events:none;`;
+    wrap.appendChild(buildDomino(domino, false, false, G.trump !== null && isTrump(domino, G.trump)));
+    table.appendChild(wrap);
   });
 }
 
