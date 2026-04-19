@@ -63,45 +63,36 @@
       flex: 1;
       min-height: 0;
       display: grid;
-      grid-template-columns: 180px 1fr 200px;
+      grid-template-columns: 180px 145px 1fr 145px 200px;
       gap: 0;
       overflow: hidden;
     }
 
-    /* ── TRICKS WON ── */
-    #tricks-won {
-      height: 140px;
-      flex-shrink: 0;
-      display: flex;
-      background: var(--surface);
-      border-top: 2px solid var(--border);
-    }
-    .tricks-team-panel {
-      flex: 1;
+    /* ── TRICKS COLUMNS ── */
+    .tricks-col {
       display: flex;
       flex-direction: column;
+      background: var(--surface);
       overflow: hidden;
     }
-    .tricks-team-panel:first-child { border-right: 1px solid var(--border); }
-    .tricks-team-header {
-      padding: 4px 8px;
+    #tricks-col-a { border-right: 1px solid var(--border); }
+    #tricks-col-b { border-left: 1px solid var(--border); }
+    .tricks-col-header {
+      padding: 5px 8px;
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
-      display: flex;
-      gap: 8px;
-      align-items: center;
     }
-    .tricks-team-header.teamA { color: var(--teamA); }
-    .tricks-team-header.teamB { color: var(--teamB); }
-    .tricks-team-header .trick-count { color: var(--muted); font-weight: 400; }
+    .tricks-col-header.teamA { color: var(--teamA); }
+    .tricks-col-header.teamB { color: var(--teamB); }
+    .trick-count { display: block; font-size: 9px; font-weight: 400; color: var(--muted); margin-top: 1px; }
     .tricks-rows {
       flex: 1;
       overflow-y: auto;
-      padding: 4px 6px;
+      padding: 4px 5px;
       display: flex;
       flex-direction: column;
       gap: 3px;
@@ -115,7 +106,7 @@
     .trick-pts-badge {
       font-size: 10px;
       color: var(--muted);
-      margin-left: 4px;
+      margin-left: 3px;
       white-space: nowrap;
     }
 
@@ -550,6 +541,12 @@
     <div id="log-entries"></div>
   </div>
 
+  <!-- TEAM A TRICKS -->
+  <div class="tricks-col" id="tricks-col-a">
+    <div class="tricks-col-header teamA">Team A<span class="trick-count" id="tricks-a-count"></span></div>
+    <div class="tricks-rows" id="trick-rows-a"></div>
+  </div>
+
   <!-- TABLE -->
   <div id="table">
     <!-- AI player areas positioned by JS -->
@@ -559,6 +556,12 @@
       <div style="font-size:11px;color:var(--muted)" id="human-hint"></div>
       <div id="human-hand"></div>
     </div>
+  </div>
+
+  <!-- TEAM B TRICKS -->
+  <div class="tricks-col" id="tricks-col-b">
+    <div class="tricks-col-header teamB">Team B<span class="trick-count" id="tricks-b-count"></span></div>
+    <div class="tricks-rows" id="trick-rows-b"></div>
   </div>
 
   <!-- RIGHT PANEL -->
@@ -624,18 +627,6 @@
     <div style="display:flex;gap:8px">
       <button class="btn btn-gold" id="kitty-confirm">Confirm &amp; Lead</button>
     </div>
-  </div>
-</div>
-
-<!-- TRICKS WON -->
-<div id="tricks-won">
-  <div class="tricks-team-panel">
-    <div class="tricks-team-header teamA">Team A <span class="trick-count" id="tricks-a-count"></span></div>
-    <div class="tricks-rows" id="trick-rows-a"></div>
-  </div>
-  <div class="tricks-team-panel">
-    <div class="tricks-team-header teamB">Team B <span class="trick-count" id="tricks-b-count"></span></div>
-    <div class="tricks-rows" id="trick-rows-b"></div>
   </div>
 </div>
 
