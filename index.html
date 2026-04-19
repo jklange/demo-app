@@ -1089,7 +1089,38 @@ function resolveTrick() {
     setTimeout(endRound, 600);
     return;
   }
+  if (checkEarlyEnd()) {
+    setTimeout(endRound, 600);
+    return;
+  }
   advanceTrick();
+}
+
+function checkEarlyEnd() {
+  const hb = G.highBid;
+  if (!hb) return false;
+  const bidTeam = TEAM[hb.player];
+  const distributed = G.teamTrickPts[0] + G.teamTrickPts[1];
+  const remaining = 88 - distributed;
+
+  if (hb.isMarks) {
+    // mark bid requires winning ALL tricks — any trick lost seals the failure
+    if (G.completedTricks.some(t => TEAM[t.winner] !== bidTeam)) {
+      log(`Mark bid is lost — ending round early.`, 'bad');
+      return true;
+    }
+  } else {
+    const bidPts = G.teamTrickPts[bidTeam];
+    if (bidPts + remaining < hb.amount) {
+      log(`Bid team can only reach ${bidPts + remaining} pts — ending round early.`, 'bad');
+      return true;
+    }
+    if (bidPts >= hb.amount) {
+      log(`Bid team secured ${bidPts} pts — ending round early.`, 'good');
+      return true;
+    }
+  }
+  return false;
 }
 
 function endRound() {
