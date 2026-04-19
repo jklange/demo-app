@@ -3,148 +3,467 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Claude Demo</title>
+  <title>Eighty Eight — Texas Dominoes</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #22263a;
-      --accent: #7c6ff7;
-      --accent2: #38bdf8;
-      --text: #e8eaf0;
-      --muted: #7a7f9a;
-      --border: #2e3248;
-      --success: #34d399;
-      --danger: #f87171;
+      --bg: #0d2b1a;
+      --felt: #1a4a2e;
+      --felt2: #1f5535;
+      --surface: #0f1f14;
+      --surface2: #16301e;
+      --text: #e8f0ea;
+      --muted: #7a9a82;
+      --border: #2a4a34;
+      --teamA: #4a9eff;
+      --teamB: #ff6b6b;
+      --gold: #ffd700;
+      --domino-bg: #f5f0e8;
+      --domino-pip: #1a1a1a;
+      --domino-face-down: #2a3a2e;
     }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-      padding: 2rem;
-    }
-
-    h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; }
-    h2 { font-size: 1rem; font-weight: 600; color: var(--text); }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.25rem;
-      max-width: 960px;
-      margin: 0 auto;
-    }
-
-    .header {
-      max-width: 960px;
-      margin: 0 auto 2rem;
-      display: flex;
-      align-items: baseline;
-      gap: 1rem;
-    }
-    .header h1 { flex: 1; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block; margin-right: 6px; box-shadow: 0 0 6px var(--success); }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 1.4rem;
+      height: 100vh;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-    }
-    .card.tall { grid-row: span 2; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; }
-    .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
-    .badge {
-      font-size: 0.72rem; padding: 2px 8px; border-radius: 999px;
-      background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
+      user-select: none;
     }
 
-    /* Clock */
-    .clock-display { text-align: center; padding: 1rem 0; }
-    .clock-time { font-size: 3.2rem; font-weight: 300; letter-spacing: -2px; color: var(--text); line-height: 1; }
-    .clock-date { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
-
-    /* Todo */
-    .todo-input-row { display: flex; gap: 0.5rem; }
-    .todo-input {
-      flex: 1; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 0.55rem 0.8rem; color: var(--text);
-      font-size: 0.9rem; outline: none; transition: border-color 0.15s;
+    /* ── SCORE BAR ── */
+    #scorebar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      font-size: 13px;
     }
-    .todo-input:focus { border-color: var(--accent); }
-    .btn {
-      background: var(--accent); color: #fff; border: none; border-radius: 8px;
-      padding: 0.55rem 1rem; cursor: pointer; font-size: 0.9rem; font-weight: 500;
-      transition: opacity 0.15s;
+    #scorebar .team {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .btn:hover { opacity: 0.85; }
-    .btn.sm { padding: 0.3rem 0.65rem; font-size: 0.78rem; background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
-    .btn.sm:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
-    .todo-list { display: flex; flex-direction: column; gap: 0.4rem; max-height: 220px; overflow-y: auto; }
-    .todo-item {
-      display: flex; align-items: center; gap: 0.6rem;
-      background: var(--surface2); border-radius: 8px; padding: 0.55rem 0.7rem;
-      font-size: 0.88rem; transition: opacity 0.2s;
+    .team-label { font-weight: 700; font-size: 14px; }
+    .teamA-label { color: var(--teamA); }
+    .teamB-label { color: var(--teamB); }
+    .marks { display: flex; gap: 3px; }
+    .mark { width: 14px; height: 14px; border-radius: 50%; }
+    .mark.filled { background: var(--gold); }
+    .mark.empty { background: var(--border); border: 1px solid var(--muted); }
+    #round-info { color: var(--muted); font-size: 12px; text-align: center; }
+
+    /* ── MAIN LAYOUT ── */
+    #main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 180px 1fr 200px;
+      gap: 0;
+      overflow: hidden;
     }
-    .todo-item.done { opacity: 0.45; text-decoration: line-through; }
-    .todo-item input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
-    .todo-item span { flex: 1; }
-    .empty { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 1rem; }
 
-    /* Counter */
-    .counter-display { text-align: center; }
-    .counter-num { font-size: 3.5rem; font-weight: 700; color: var(--accent); }
-    .counter-btns { display: flex; gap: 0.5rem; justify-content: center; }
-    .btn.outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-    .btn.outline:hover { background: var(--surface2); }
-    .btn.large { padding: 0.6rem 1.5rem; font-size: 1.2rem; }
-
-    /* Color mixer */
-    .color-preview {
-      height: 80px; border-radius: 10px; transition: background 0.3s;
-      background: hsl(270, 70%, 60%);
+    /* ── LOG ── */
+    #log-panel {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
-    .sliders { display: flex; flex-direction: column; gap: 0.6rem; }
-    .slider-row { display: flex; align-items: center; gap: 0.8rem; font-size: 0.82rem; }
-    .slider-row span { width: 24px; color: var(--muted); }
-    input[type=range] {
-      flex: 1; accent-color: var(--accent); cursor: pointer;
+    #log-panel h3 {
+      padding: 8px 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
-    .slider-val { width: 32px; text-align: right; font-size: 0.8rem; color: var(--muted); }
-
-    /* Notes */
-    .note-area {
-      width: 100%; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 0.8rem; color: var(--text); font-size: 0.88rem;
-      resize: vertical; min-height: 120px; font-family: inherit; outline: none;
-      transition: border-color 0.15s; line-height: 1.6;
+    #log-entries {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
     }
-    .note-area:focus { border-color: var(--accent); }
-    .note-status { font-size: 0.78rem; color: var(--muted); text-align: right; }
+    .log-entry {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .log-entry.highlight { color: var(--text); }
+    .log-entry.good { color: #6ee7a0; }
+    .log-entry.bad { color: var(--teamB); }
 
-    /* Stats bar */
-    .stat-bar { display: flex; gap: 1rem; }
-    .stat { flex: 1; text-align: center; background: var(--surface2); border-radius: 10px; padding: 0.8rem; }
-    .stat-num { font-size: 1.6rem; font-weight: 700; color: var(--accent2); }
-    .stat-label { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+    /* ── TABLE ── */
+    #table {
+      background: radial-gradient(ellipse at center, var(--felt2) 0%, var(--felt) 60%, var(--bg) 100%);
+      position: relative;
+      overflow: hidden;
+    }
 
-    /* Mini chart */
-    .chart { display: flex; align-items: flex-end; gap: 4px; height: 60px; }
-    .bar {
-      flex: 1; background: var(--accent); border-radius: 4px 4px 0 0;
-      opacity: 0.7; transition: height 0.4s ease, opacity 0.2s;
+    /* player seats */
+    .player-area {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .player-label {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.5);
+    }
+    .player-label.teamA { color: var(--teamA); border: 1px solid var(--teamA); }
+    .player-label.teamB { color: var(--teamB); border: 1px solid var(--teamB); }
+    .player-label.active { box-shadow: 0 0 8px currentColor; }
+    .player-hand-count {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    /* face-down domino pile */
+    .hand-pile {
+      display: flex;
+      gap: 2px;
+    }
+    .face-down {
+      width: 16px;
+      height: 28px;
+      background: var(--domino-face-down);
+      border-radius: 3px;
+      border: 1px solid #1a2a1e;
+    }
+    .face-down.horiz {
+      width: 28px;
+      height: 16px;
+    }
+
+    /* trick area */
+    #trick-area {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 220px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 6px;
+      align-items: center;
+      justify-items: center;
+    }
+
+    /* ── DOMINO TILE ── */
+    .domino {
+      display: flex;
+      flex-direction: column;
+      background: var(--domino-bg);
+      border-radius: 5px;
+      border: 2px solid #c8bfa0;
+      box-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      cursor: default;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .domino.vertical { width: 36px; height: 68px; }
+    .domino.horizontal { width: 68px; height: 36px; flex-direction: row; }
+    .domino .half {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .domino.vertical .divider {
+      height: 1px;
+      background: #a09070;
+      margin: 0 4px;
+    }
+    .domino.horizontal .divider {
+      width: 1px;
+      background: #a09070;
+      margin: 4px 0;
+    }
+    /* pip grid */
+    .pip-grid {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 0;
+    }
+    .domino.horizontal .pip-grid {
+      width: 22px;
+      height: 22px;
+    }
+    .pip {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--domino-pip);
+      margin: auto;
+    }
+    .pip.hidden { visibility: hidden; }
+
+    /* playable / selected states */
+    .domino.playable {
       cursor: pointer;
+      border-color: var(--gold);
+      box-shadow: 0 0 8px rgba(255,215,0,0.5);
     }
-    .bar:hover { opacity: 1; }
+    .domino.playable:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 6px 16px rgba(255,215,0,0.6);
+    }
+    .domino.selected {
+      border-color: var(--teamA);
+      transform: translateY(-6px);
+      box-shadow: 0 6px 16px rgba(74,158,255,0.7);
+    }
+    .domino.dimmed { opacity: 0.45; }
+    .domino.trump-marker { border-color: #ff9800; }
 
-    scrollbar-width: thin;
+    /* ── HUMAN HAND ── */
+    #human-hand-area {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.6));
+    }
+    #human-hand {
+      display: flex;
+      gap: 6px;
+      flex-wrap: nowrap;
+      justify-content: center;
+    }
+
+    /* ── RIGHT PANEL ── */
+    #right-panel {
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      gap: 10px;
+      overflow-y: auto;
+    }
+    #right-panel h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+    }
+    #phase-display {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gold);
+    }
+    #bid-info {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    #trump-display {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .trump-pip {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ff9800;
+    }
+    #trick-score {
+      font-size: 12px;
+      line-height: 1.8;
+      color: var(--muted);
+    }
+    #trick-score span { color: var(--text); font-weight: 600; }
+
+    /* ── OVERLAYS ── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .overlay.hidden { display: none; }
+    .panel {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      min-width: 320px;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel h2 { font-size: 18px; color: var(--gold); }
+    .panel p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* bid panel */
+    #bid-panel .trump-options {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+    .trump-btn {
+      padding: 8px 4px;
+      border-radius: 6px;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 11px;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .trump-btn:hover { border-color: var(--muted); }
+    .trump-btn.selected { border-color: #ff9800; background: rgba(255,152,0,0.2); color: #ff9800; }
+    .bid-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .bid-amount-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--teamA); color: #fff; }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.15); }
+    .btn-danger { background: var(--teamB); color: #fff; }
+    .btn-danger:hover:not(:disabled) { filter: brightness(1.15); }
+    .btn-gold { background: var(--gold); color: #000; }
+    .btn-gold:hover:not(:disabled) { filter: brightness(1.1); }
+    .btn-muted { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+    .btn-muted:hover:not(:disabled) { border-color: var(--muted); color: var(--text); }
+    .num-input {
+      width: 64px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 14px;
+      text-align: center;
+    }
+    .marks-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .mark-bid-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .mark-bid-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* kitty panel */
+    #kitty-panel .kitty-dominoes {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    #kitty-panel .instructions {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    #kitty-hand {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 420px;
+    }
+    .kitty-domino-wrap { position: relative; }
+    .swap-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: var(--teamB);
+      color: #fff;
+      font-size: 9px;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    /* round result */
+    #result-panel .result-table {
+      font-size: 12px;
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #result-panel .result-table td {
+      padding: 4px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    #result-panel .result-table td:first-child { color: var(--muted); }
+
+    /* game over */
+    #gameover-panel { text-align: center; }
+    #gameover-panel h2 { font-size: 28px; }
+    #gameover-panel .winner-text { font-size: 16px; color: var(--text); }
+
+    /* tooltip */
+    #tooltip {
+      position: fixed;
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      pointer-events: none;
+      z-index: 200;
+      display: none;
+    }
+
+    /* scrollbar */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -152,262 +471,1134 @@
 </head>
 <body>
 
-<div class="header">
-  <h1><span class="dot"></span>Claude Demo App</h1>
-  <span id="greeting" style="color:var(--muted);font-size:0.9rem;"></span>
+<!-- SCORE BAR -->
+<div id="scorebar">
+  <div class="team">
+    <span class="team-label teamA-label">Team A</span>
+    <span style="font-size:11px;color:var(--muted)">(You, P2, P4)</span>
+    <div class="marks" id="marksA"></div>
+  </div>
+  <div id="round-info">Round 1 · Deal</div>
+  <div class="team">
+    <div class="marks" id="marksB"></div>
+    <span style="font-size:11px;color:var(--muted)">(P1, P3, P5)</span>
+    <span class="team-label teamB-label">Team B</span>
+  </div>
 </div>
 
-<div class="grid">
+<!-- MAIN -->
+<div id="main">
+  <!-- LOG -->
+  <div id="log-panel">
+    <h3>Game Log</h3>
+    <div id="log-entries"></div>
+  </div>
 
-  <!-- Clock -->
-  <div class="card">
-    <div class="card-header">
-      <span class="label">Live Clock</span>
-      <span class="badge" id="tz"></span>
-    </div>
-    <div class="clock-display">
-      <div class="clock-time" id="clock-time">--:--:--</div>
-      <div class="clock-date" id="clock-date"></div>
+  <!-- TABLE -->
+  <div id="table">
+    <!-- AI player areas positioned by JS -->
+    <div id="trick-area"></div>
+    <div id="human-hand-area">
+      <div style="font-size:11px;color:var(--muted)" id="human-hint"></div>
+      <div id="human-hand"></div>
     </div>
   </div>
 
-  <!-- Counter -->
-  <div class="card">
-    <div class="card-header">
-      <span class="label">Counter 1</span>
-      <button class="btn sm" onclick="resetCounter(1)">Reset</button>
+  <!-- RIGHT PANEL -->
+  <div id="right-panel">
+    <h3>Phase</h3>
+    <div id="phase-display">—</div>
+    <h3>Bid</h3>
+    <div id="bid-info">—</div>
+    <div id="trump-display" style="display:none">
+      <div class="trump-pip"></div>
+      <span id="trump-name">—</span>
     </div>
-    <div class="counter-display">
-      <div class="counter-num" id="counter-num-1">0</div>
-    </div>
-    <div class="counter-btns">
-      <button class="btn outline large" onclick="adjustCounter(1, -1)">−</button>
-      <button class="btn large" onclick="adjustCounter(1, 1)">+</button>
-    </div>
-  </div>
-
-  <!-- Counter 2 -->
-  <div class="card">
-    <div class="card-header">
-      <span class="label">Counter 2</span>
-      <button class="btn sm" onclick="resetCounter(2)">Reset</button>
-    </div>
-    <div class="counter-display">
-      <div class="counter-num" id="counter-num-2">0</div>
-    </div>
-    <div class="counter-btns">
-      <button class="btn outline large" onclick="adjustCounter(2, -1)">−</button>
-      <button class="btn large" onclick="adjustCounter(2, 1)">+</button>
+    <h3>Score</h3>
+    <div id="trick-score">
+      Team A: <span id="scoreA-pts">0</span> pts<br>
+      Team B: <span id="scoreB-pts">0</span> pts<br>
+      Tricks left: <span id="tricks-left">9</span>
     </div>
   </div>
-
-  <!-- Counter 3 -->
-  <div class="card">
-    <div class="card-header">
-      <span class="label">Counter 3</span>
-      <button class="btn sm" onclick="resetCounter(3)">Reset</button>
-    </div>
-    <div class="counter-display">
-      <div class="counter-num" id="counter-num-3">0</div>
-    </div>
-    <div class="counter-btns">
-      <button class="btn outline large" onclick="adjustCounter(3, -1)">−</button>
-      <button class="btn large" onclick="adjustCounter(3, 1)">+</button>
-    </div>
-  </div>
-
-  <!-- Counter 4 -->
-  <div class="card">
-    <div class="card-header">
-      <span class="label">Counter 4</span>
-      <button class="btn sm" onclick="resetCounter(4)">Reset</button>
-    </div>
-    <div class="counter-display">
-      <div class="counter-num" id="counter-num-4">0</div>
-    </div>
-    <div class="counter-btns">
-      <button class="btn outline large" onclick="adjustCounter(4, -1)">−</button>
-      <button class="btn large" onclick="adjustCounter(4, 1)">+</button>
-    </div>
-  </div>
-
-  <!-- Todo -->
-  <div class="card tall">
-    <div class="card-header">
-      <span class="label">Todo List</span>
-      <span class="badge" id="todo-count">0 left</span>
-    </div>
-    <div class="todo-input-row">
-      <input class="todo-input" id="todo-input" placeholder="Add a task…" onkeydown="if(event.key==='Enter')addTodo()" />
-      <button class="btn" onclick="addTodo()">Add</button>
-    </div>
-    <div class="todo-list" id="todo-list">
-      <div class="empty">No tasks yet — add one above!</div>
-    </div>
-    <div class="stat-bar" id="todo-stats" style="display:none">
-      <div class="stat"><div class="stat-num" id="s-total">0</div><div class="stat-label">Total</div></div>
-      <div class="stat"><div class="stat-num" id="s-done">0</div><div class="stat-label">Done</div></div>
-      <div class="stat"><div class="stat-num" id="s-left">0</div><div class="stat-label">Left</div></div>
-    </div>
-  </div>
-
-  <!-- Color mixer -->
-  <div class="card">
-    <div class="card-header">
-      <span class="label">Color Mixer</span>
-      <span class="badge" id="hex-badge">#7c4fff</span>
-    </div>
-    <div class="color-preview" id="color-preview"></div>
-    <div class="sliders">
-      <div class="slider-row">
-        <span>H</span>
-        <input type="range" id="hue" min="0" max="360" value="270" oninput="updateColor()">
-        <span class="slider-val" id="hue-val">270</span>
-      </div>
-      <div class="slider-row">
-        <span>S</span>
-        <input type="range" id="sat" min="0" max="100" value="70" oninput="updateColor()">
-        <span class="slider-val" id="sat-val">70</span>
-      </div>
-      <div class="slider-row">
-        <span>L</span>
-        <input type="range" id="lit" min="10" max="90" value="60" oninput="updateColor()">
-        <span class="slider-val" id="lit-val">60</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Notes -->
-  <div class="card">
-    <div class="card-header">
-      <span class="label">Quick Note</span>
-      <span class="note-status" id="note-status">Auto-saved</span>
-    </div>
-    <textarea class="note-area" id="note-area" placeholder="Type anything…"></textarea>
-  </div>
-
-  <!-- Chart -->
-  <div class="card">
-    <div class="card-header">
-      <span class="label">Activity (click to randomize)</span>
-    </div>
-    <div class="chart" id="chart"></div>
-    <div style="font-size:0.78rem;color:var(--muted);text-align:center">Click bars or press Randomize</div>
-    <button class="btn outline" onclick="randomizeChart()">Randomize</button>
-  </div>
-
 </div>
+
+<!-- BID OVERLAY -->
+<div class="overlay hidden" id="bid-overlay">
+  <div class="panel" id="bid-panel">
+    <h2>Your Bid</h2>
+    <p id="bid-panel-context">Current high bid: none</p>
+    <div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Select Trump Suit</div>
+      <div class="trump-options" id="trump-options"></div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Numeric Bid (60–88)</div>
+      <div class="bid-amount-row">
+        <button class="btn btn-muted" id="bid-dec">−</button>
+        <input class="num-input" type="number" id="bid-amount" value="60" min="60" max="88" />
+        <button class="btn btn-muted" id="bid-inc">+</button>
+        <button class="btn btn-primary" id="bid-submit">Bid</button>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Mark Bid</div>
+      <div class="marks-row" id="mark-bids-row"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-danger" id="bid-pass">Pass</button>
+    </div>
+  </div>
+</div>
+
+<!-- KITTY OVERLAY -->
+<div class="overlay hidden" id="kitty-overlay">
+  <div class="panel" id="kitty-panel">
+    <h2>Kitty</h2>
+    <p class="instructions">Click kitty dominoes to swap them into your hand. You may swap up to 2. When done, click Confirm.</p>
+    <div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Kitty (2 dominoes)</div>
+      <div class="kitty-dominoes" id="kitty-dominoes"></div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Your Hand — click to swap out</div>
+      <div id="kitty-hand"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-gold" id="kitty-confirm">Confirm &amp; Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROUND RESULT OVERLAY -->
+<div class="overlay hidden" id="result-overlay">
+  <div class="panel" id="result-panel">
+    <h2 id="result-title">Round Over</h2>
+    <p id="result-summary"></p>
+    <table class="result-table" id="result-table"></table>
+    <button class="btn btn-primary" id="result-continue">Next Round</button>
+  </div>
+</div>
+
+<!-- GAME OVER OVERLAY -->
+<div class="overlay hidden" id="gameover-overlay">
+  <div class="panel" id="gameover-panel">
+    <h2 id="gameover-title">🎉</h2>
+    <div class="winner-text" id="gameover-text"></div>
+    <button class="btn btn-gold" id="gameover-newgame" style="margin-top:8px">New Game</button>
+  </div>
+</div>
+
+<div id="tooltip"></div>
 
 <script>
-  // Greeting
-  const hr = new Date().getHours();
-  document.getElementById('greeting').textContent =
-    hr < 12 ? 'Good morning!' : hr < 17 ? 'Good afternoon!' : 'Good evening!';
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes'];
+const TEAM = [0, 1, 0, 1, 0, 1]; // player index → team (0=A, 1=B)
+const AI_DELAY_MIN = 700;
+const AI_DELAY_MAX = 1100;
+const TRICK_PAUSE = 1600;
 
-  // Clock
-  function updateClock() {
-    const now = new Date();
-    document.getElementById('clock-time').textContent =
-      now.toLocaleTimeString('en-US', { hour12: false });
-    document.getElementById('clock-date').textContent =
-      now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
-    document.getElementById('tz').textContent =
-      Intl.DateTimeFormat().resolvedOptions().timeZone;
-  }
-  updateClock();
-  setInterval(updateClock, 1000);
+// pip layouts: array of 9 booleans for 3×3 grid (top-left→bottom-right)
+const PIP_LAYOUTS = {
+  0: [0,0,0, 0,0,0, 0,0,0],
+  1: [0,0,0, 0,1,0, 0,0,0],
+  2: [1,0,0, 0,0,0, 0,0,1],
+  3: [1,0,0, 0,1,0, 0,0,1],
+  4: [1,0,1, 0,0,0, 1,0,1],
+  5: [1,0,1, 0,1,0, 1,0,1],
+  6: [1,0,1, 1,0,1, 1,0,1],
+};
 
-  // Counters
-  const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-  function adjustCounter(id, d) {
-    counts[id] += d;
-    const el = document.getElementById('counter-num-' + id);
-    el.textContent = counts[id];
-    el.style.color = counts[id] < 0 ? 'var(--danger)' : counts[id] > 0 ? 'var(--success)' : 'var(--accent)';
-  }
-  function resetCounter(id) { counts[id] = 0; adjustCounter(id, 0); }
+// player seat positions (top%, left%, for the label anchor)
+// 0=bottom-center(human), 1=bottom-left, 2=mid-left, 3=top-left, 4=top-right, 5=mid-right
+const SEAT_POSITIONS = [
+  null,                          // 0: human (handled separately)
+  { top:'72%', left:'12%' },    // 1
+  { top:'38%', left:'4%'  },    // 2
+  { top:'8%',  left:'18%' },    // 3
+  { top:'8%',  right:'18%'},    // 4
+  { top:'38%', right:'4%' },    // 5
+];
 
-  // Todo
-  let todos = JSON.parse(localStorage.getItem('demo-todos') || '[]');
-  function saveTodos() { localStorage.setItem('demo-todos', JSON.stringify(todos)); }
-  function renderTodos() {
-    const list = document.getElementById('todo-list');
-    const left = todos.filter(t => !t.done).length;
-    document.getElementById('todo-count').textContent = left + ' left';
-    if (!todos.length) {
-      list.innerHTML = '<div class="empty">No tasks yet — add one above!</div>';
-      document.getElementById('todo-stats').style.display = 'none';
-      return;
+const TRICK_SLOTS = [
+  { gridColumn:2, gridRow:1 }, // player 3 (top)
+  { gridColumn:1, gridRow:1 }, // player 4 (top-left from center)
+  { gridColumn:3, gridRow:1 }, // player 5 (top-right from center)
+  { gridColumn:1, gridRow:2 }, // player 2
+  { gridColumn:3, gridRow:2 }, // player 1
+  { gridColumn:2, gridRow:2 }, // player 0 (bottom)
+];
+// maps player index → trick area grid slot
+const PLAYER_TRICK_SLOT = [5, 4, 3, 0, 1, 2];
+
+// ─────────────────────────────────────────────
+// GAME STATE
+// ─────────────────────────────────────────────
+let G = {};
+
+function initGame() {
+  G = {
+    teamScores: [0, 0],
+    roundNum: 0,
+    bidStartIdx: Math.floor(Math.random() * 6),
+    phase: 'deal',
+    hands: [[], [], [], [], [], []],
+    kitty: [],
+    currentBidder: 0,
+    highBid: null,
+    bidPassed: [false, false, false, false, false, false],
+    kittySwapPending: [],   // kitty dominoes selected for swap
+    handSwapPending: [],    // hand dominoes selected for discard
+    trump: null,
+    bidWinner: 0,
+    trickLeader: 0,
+    currentTrick: [],
+    completedTricks: [],
+    teamTrickPts: [0, 0],
+    awaitingHuman: false,
+    trickInProgress: false,
+  };
+  startRound();
+}
+
+// ─────────────────────────────────────────────
+// DOMINO LOGIC
+// ─────────────────────────────────────────────
+function createDeck() {
+  const deck = [];
+  for (let s = 1; s <= 2; s++) {
+    for (let h = 0; h <= 6; h++) {
+      for (let l = 0; l <= h; l++) {
+        deck.push({ h, l, s });
+      }
     }
-    document.getElementById('todo-stats').style.display = 'flex';
-    document.getElementById('s-total').textContent = todos.length;
-    document.getElementById('s-done').textContent = todos.filter(t=>t.done).length;
-    document.getElementById('s-left').textContent = left;
-    list.innerHTML = todos.map((t, i) => `
-      <div class="todo-item${t.done?' done':''}">
-        <input type="checkbox" ${t.done?'checked':''} onchange="toggleTodo(${i})">
-        <span>${t.text}</span>
-        <button class="btn sm" onclick="removeTodo(${i})">✕</button>
-      </div>`).join('');
   }
-  function addTodo() {
-    const inp = document.getElementById('todo-input');
-    const text = inp.value.trim();
-    if (!text) return;
-    todos.push({ text, done: false });
-    inp.value = '';
-    saveTodos(); renderTodos();
-  }
-  function toggleTodo(i) { todos[i].done = !todos[i].done; saveTodos(); renderTodos(); }
-  function removeTodo(i) { todos.splice(i, 1); saveTodos(); renderTodos(); }
-  renderTodos();
+  return deck; // 28×2 = 56
+}
 
-  // Color mixer
-  function updateColor() {
-    const h = document.getElementById('hue').value;
-    const s = document.getElementById('sat').value;
-    const l = document.getElementById('lit').value;
-    document.getElementById('hue-val').textContent = h;
-    document.getElementById('sat-val').textContent = s;
-    document.getElementById('lit-val').textContent = l;
-    const hsl = `hsl(${h},${s}%,${l}%)`;
-    document.getElementById('color-preview').style.background = hsl;
-    // convert to hex approx
-    const c = document.createElement('canvas').getContext('2d');
-    c.fillStyle = hsl;
-    c.fillRect(0,0,1,1);
-    const [r,g,b] = c.getImageData(0,0,1,1).data;
-    document.getElementById('hex-badge').textContent =
-      '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  updateColor();
+  return arr;
+}
 
-  // Notes
-  const noteArea = document.getElementById('note-area');
-  noteArea.value = localStorage.getItem('demo-note') || '';
-  let saveTimer;
-  noteArea.addEventListener('input', () => {
-    document.getElementById('note-status').textContent = 'Saving…';
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      localStorage.setItem('demo-note', noteArea.value);
-      document.getElementById('note-status').textContent = 'Saved ✓';
-    }, 600);
+function deal() {
+  const deck = shuffle(createDeck());
+  for (let p = 0; p < 6; p++) {
+    G.hands[p] = deck.slice(p * 9, p * 9 + 9);
+  }
+  G.kitty = deck.slice(54, 56);
+}
+
+function dominoId(d) { return `${d.h}-${d.l}-${d.s}`; }
+
+function isTrump(d, trump) {
+  return d.h === trump || d.l === trump;
+}
+
+function getSuit(d, trump) {
+  // suit = higher non-trump pip; null if trump domino
+  if (isTrump(d, trump)) return null;
+  return d.h; // h >= l always, and it's not trump, so h is the suit
+}
+
+function trumpRank(d, trump) {
+  if (d.h === trump && d.l === trump) return 20; // double
+  return d.h === trump ? d.l : d.h; // the other pip
+}
+
+function suitRank(d, suit) {
+  // lower pip (the non-suit pip) used for comparison within suit
+  return d.l;
+}
+
+function dominoPoints(d) {
+  const sum = d.h + d.l;
+  return sum % 5 === 0 ? sum : 0;
+}
+
+function canPlay(d, trick, hand, trump) {
+  if (trick.length === 0) return true;
+  const led = trick[0].domino;
+  const ledIsTrump = isTrump(led, trump);
+  const ledSuit = ledIsTrump ? null : led.h;
+
+  if (ledIsTrump) {
+    // must follow trump if possible
+    const hasTrump = hand.some(x => isTrump(x, trump));
+    if (hasTrump) return isTrump(d, trump);
+    return true; // void in trump
+  } else {
+    // must follow suit if possible
+    const hasSuit = hand.some(x => !isTrump(x, trump) && x.h === ledSuit);
+    if (hasSuit) return !isTrump(d, trump) && d.h === ledSuit;
+    return true; // void in suit
+  }
+}
+
+function trickWinner(trick, trump) {
+  const led = trick[0].domino;
+  const ledIsTrump = isTrump(led, trump);
+  const ledSuit = ledIsTrump ? null : led.h;
+
+  let bestIdx = 0;
+  let bestScore = -1;
+
+  trick.forEach(({ domino }, i) => {
+    let score = -1;
+    if (isTrump(domino, trump)) {
+      score = 100 + trumpRank(domino, trump);
+    } else if (!ledIsTrump && domino.h === ledSuit) {
+      score = 50 + suitRank(domino, ledSuit);
+    }
+    // first played wins ties (score stays -1 overrides nothing)
+    if (i === 0) {
+      bestScore = score < 0 ? 0 : score;
+      bestIdx = 0;
+    } else if (score > bestScore) {
+      bestScore = score;
+      bestIdx = i;
+    }
+  });
+  return bestIdx;
+}
+
+function trickPoints(trick) {
+  return trick.reduce((sum, { domino }) => sum + dominoPoints(domino), 0);
+}
+
+// ─────────────────────────────────────────────
+// BID LOGIC
+// ─────────────────────────────────────────────
+function validNumericBid(highBid) {
+  if (!highBid || highBid.isMarks) return 60;
+  return highBid.amount + 1;
+}
+
+function aiChooseBid(playerIdx) {
+  const hand = G.hands[playerIdx];
+  const highBid = G.highBid;
+
+  // count trumps and count-dominoes per suit
+  let bestSuit = 0, bestCount = 0;
+  for (let t = 0; t <= 6; t++) {
+    const cnt = hand.filter(d => isTrump(d, t)).length;
+    if (cnt > bestCount) { bestCount = cnt; bestSuit = t; }
+  }
+
+  const countPts = hand.reduce((s, d) => s + dominoPoints(d), 0);
+  const strength = bestCount * 8 + countPts; // rough hand strength
+
+  // decide whether to bid
+  if (highBid && highBid.isMarks) {
+    // only bid if very strong and can win all tricks
+    if (bestCount >= 7 && countPts >= 20) {
+      return { isMarks: true, amount: highBid.amount + 1, trump: bestSuit };
+    }
+    return null; // pass
+  }
+
+  const minBid = highBid ? highBid.amount + 1 : 60;
+  if (minBid > 88) {
+    // must go marks
+    if (bestCount >= 7) {
+      return { isMarks: true, amount: 1, trump: bestSuit };
+    }
+    return null;
+  }
+
+  // numeric bid based on strength
+  let bidAmount = 60;
+  if (strength >= 60) bidAmount = 84;
+  else if (strength >= 50) bidAmount = 78;
+  else if (strength >= 40) bidAmount = 72;
+  else if (strength >= 30) bidAmount = 66;
+
+  if (bidAmount < minBid) return null; // can't beat current bid
+  return { isMarks: false, amount: bidAmount, trump: bestSuit };
+}
+
+// ─────────────────────────────────────────────
+// AI PLAY
+// ─────────────────────────────────────────────
+function legalPlays(playerIdx) {
+  const hand = G.hands[playerIdx];
+  return hand.filter(d => canPlay(d, G.currentTrick, hand, G.trump));
+}
+
+function aiLeadDomino(playerIdx) {
+  const hand = G.hands[playerIdx];
+  const legal = legalPlays(playerIdx);
+  // lead highest trump first, else highest suit
+  const trumps = legal.filter(d => isTrump(d, G.trump)).sort((a, b) => trumpRank(b, G.trump) - trumpRank(a, G.trump));
+  if (trumps.length > 0 && trumps.length >= hand.filter(d => isTrump(d, G.trump)).length * 0.5) {
+    return trumps[0];
+  }
+  // lead best count domino
+  const sorted = [...legal].sort((a, b) => (dominoPoints(b) - dominoPoints(a)) || (b.h - a.h));
+  return sorted[0];
+}
+
+function aiFollowDomino(playerIdx) {
+  const legal = legalPlays(playerIdx);
+  const myTeam = TEAM[playerIdx];
+  const trick = G.currentTrick;
+
+  // check if partner is currently winning
+  let partnerWinning = false;
+  if (trick.length > 0) {
+    const winnerIdx = trickWinner(trick, G.trump);
+    const winnerPlayer = trick[winnerIdx].player;
+    partnerWinning = TEAM[winnerPlayer] === myTeam;
+  }
+
+  if (partnerWinning) {
+    // dump lowest value (avoid wasting points)
+    const sorted = [...legal].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h));
+    return sorted[0];
+  }
+
+  // try to win: prefer cheapest winning domino
+  const winning = legal.filter(d => {
+    const hypo = [...trick, { player: playerIdx, domino: d }];
+    const w = trickWinner(hypo, G.trump);
+    return hypo[w].player === playerIdx;
+  });
+  if (winning.length > 0) {
+    const sorted = winning.sort((a, b) => dominoPoints(a) - dominoPoints(b));
+    return sorted[0];
+  }
+  // can't win, dump lowest
+  const sorted = [...legal].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h));
+  return sorted[0];
+}
+
+function aiKittyChoice(playerIdx) {
+  const hand = [...G.hands[playerIdx]];
+  const kitty = [...G.kitty];
+  const trump = G.trump;
+
+  // pull any trumps from kitty into hand
+  kitty.forEach((k, ki) => {
+    if (isTrump(k, trump)) {
+      // find weakest non-trump to swap out
+      const nonTrumps = hand.filter(d => !isTrump(d, trump)).sort((a, b) => dominoPoints(a) - dominoPoints(b));
+      if (nonTrumps.length > 0) {
+        const idx = hand.indexOf(nonTrumps[0]);
+        G.kitty[ki] = hand[idx];
+        hand[idx] = k;
+      }
+    }
   });
 
-  // Chart
-  let chartData = Array.from({length: 12}, () => Math.floor(Math.random()*80)+10);
-  function renderChart() {
-    const max = Math.max(...chartData);
-    document.getElementById('chart').innerHTML = chartData.map((v, i) => `
-      <div class="bar" style="height:${(v/max)*100}%" title="${v}" onclick="chartData[${i}]=Math.floor(Math.random()*80)+10;renderChart()"></div>
-    `).join('');
+  // pull count dominoes from kitty
+  kitty.forEach((k, ki) => {
+    if (dominoPoints(k) > 0 && dominoPoints(G.kitty[ki]) === 0) return; // already swapped
+    if (dominoPoints(G.kitty[ki]) > 0) {
+      const nonCounts = hand.filter(d => !isTrump(d, trump) && dominoPoints(d) === 0).sort((a, b) => a.h - b.h);
+      if (nonCounts.length > 0) {
+        const idx = hand.indexOf(nonCounts[0]);
+        G.kitty[ki] = hand[idx];
+        hand[idx] = G.kitty[ki];
+      }
+    }
+  });
+
+  G.hands[playerIdx] = hand;
+}
+
+// ─────────────────────────────────────────────
+// GAME FLOW
+// ─────────────────────────────────────────────
+function startRound() {
+  G.roundNum++;
+  G.phase = 'deal';
+  G.hands = [[], [], [], [], [], []];
+  G.kitty = [];
+  G.currentBidder = G.bidStartIdx;
+  G.highBid = null;
+  G.bidPassed = [false, false, false, false, false, false];
+  G.trump = null;
+  G.currentTrick = [];
+  G.completedTricks = [];
+  G.teamTrickPts = [0, 0];
+  G.awaitingHuman = false;
+  G.trickInProgress = false;
+
+  deal();
+  log(`Round ${G.roundNum} begins. Bid starts with Player ${G.bidStartIdx}.`, 'highlight');
+
+  G.phase = 'bid';
+  renderAll();
+  advanceBid();
+}
+
+function advanceBid() {
+  // find next non-passed bidder
+  const allPassed = G.bidPassed.every(p => p);
+  if (allPassed) {
+    // forced bid on bid-start player
+    G.bidPassed[G.bidStartIdx] = false;
+    G.currentBidder = G.bidStartIdx;
   }
-  function randomizeChart() {
-    chartData = Array.from({length: 12}, () => Math.floor(Math.random()*80)+10);
-    renderChart();
+
+  // check if only one player left
+  const activeBidders = G.bidPassed.filter(p => !p).length;
+
+  if (activeBidders === 1 || (G.highBid && G.bidPassed[G.currentBidder] === false && allBidExceptWinner())) {
+    finishBidding();
+    return;
   }
-  renderChart();
+
+  renderBidInfo();
+
+  if (G.currentBidder === 0 && !G.bidPassed[0]) {
+    // human's turn to bid
+    showBidPanel();
+  } else {
+    if (G.bidPassed[G.currentBidder]) {
+      nextBidder();
+      return;
+    }
+    // AI bids
+    setTimeout(() => {
+      const bid = aiChooseBid(G.currentBidder);
+      const mustBid = !G.highBid && G.currentBidder === G.bidStartIdx && G.bidPassed.filter(p => !p).length === 1;
+      if (!bid && !mustBid) {
+        G.bidPassed[G.currentBidder] = true;
+        log(`Player ${G.currentBidder} passes.`);
+      } else if (bid || mustBid) {
+        const finalBid = bid || { isMarks: false, amount: 60, trump: 0 };
+        G.highBid = { player: G.currentBidder, ...finalBid };
+        const bidStr = finalBid.isMarks ? `${finalBid.amount} mark(s)` : finalBid.amount;
+        log(`Player ${G.currentBidder} bids ${bidStr} on ${TRUMP_NAMES[finalBid.trump]}.`, 'highlight');
+      }
+      renderBidInfo();
+      checkBidEnd();
+    }, aiDelay());
+  }
+}
+
+function allBidExceptWinner() {
+  if (!G.highBid) return false;
+  for (let i = 0; i < 6; i++) {
+    if (i !== G.highBid.player && !G.bidPassed[i]) return false;
+  }
+  return true;
+}
+
+function checkBidEnd() {
+  if (allBidExceptWinner()) {
+    finishBidding();
+    return;
+  }
+  nextBidder();
+}
+
+function nextBidder() {
+  G.currentBidder = (G.currentBidder + 1) % 6;
+  advanceBid();
+}
+
+function finishBidding() {
+  hideBidPanel();
+  if (!G.highBid) {
+    // fallback: bid-start must bid 60
+    G.highBid = { player: G.bidStartIdx, isMarks: false, amount: 60, trump: 0 };
+  }
+  G.bidWinner = G.highBid.player;
+  G.trump = G.highBid.trump;
+  const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : G.highBid.amount;
+  log(`Bidding over. Player ${G.bidWinner} wins at ${bidStr} on ${TRUMP_NAMES[G.trump]}.`, 'good');
+  G.phase = 'kitty';
+
+  if (G.bidWinner === 0) {
+    showKittyPanel();
+  } else {
+    setTimeout(() => {
+      aiKittyChoice(G.bidWinner);
+      log(`Player ${G.bidWinner} takes kitty and leads.`);
+      startPlay();
+    }, aiDelay());
+  }
+  renderAll();
+}
+
+function startPlay() {
+  hideKittyPanel();
+  G.phase = 'play';
+  G.trickLeader = G.bidWinner;
+  G.currentTrick = [];
+  renderAll();
+  advanceTrick();
+}
+
+function advanceTrick() {
+  if (G.trickInProgress) return;
+
+  // whose turn?
+  const played = G.currentTrick.length;
+  if (played === 6) {
+    // trick complete
+    resolveTrick();
+    return;
+  }
+
+  const playerIdx = (G.trickLeader + played) % 6;
+  renderTrickArea();
+  renderHumanHand();
+  highlightCurrentPlayer(playerIdx);
+
+  if (playerIdx === 0) {
+    G.awaitingHuman = true;
+    renderHumanHand();
+  } else {
+    G.awaitingHuman = false;
+    setTimeout(() => {
+      const d = G.currentTrick.length === 0 ? aiLeadDomino(playerIdx) : aiFollowDomino(playerIdx);
+      playDomino(playerIdx, d);
+    }, aiDelay());
+  }
+}
+
+function playDomino(playerIdx, domino) {
+  G.hands[playerIdx] = G.hands[playerIdx].filter(d => dominoId(d) !== dominoId(domino));
+  G.currentTrick.push({ player: playerIdx, domino });
+  log(`Player ${playerIdx} plays ${domino.h}-${domino.l}.`);
+  G.awaitingHuman = false;
+  renderTrickArea();
+  renderHumanHand();
+  if (G.currentTrick.length === 6) {
+    G.trickInProgress = true;
+    setTimeout(resolveTrick, TRICK_PAUSE);
+  } else {
+    advanceTrick();
+  }
+}
+
+function resolveTrick() {
+  const trick = G.currentTrick;
+  const winIdx = trickWinner(trick, G.trump);
+  const winner = trick[winIdx].player;
+  const winTeam = TEAM[winner];
+  const pts = 2 + trickPoints(trick); // 2 for trick + count dominoes
+  G.teamTrickPts[winTeam] += pts;
+
+  G.completedTricks.push({ winner, plays: [...trick], pts });
+  log(`Player ${winner} wins trick (${pts} pts).`, winTeam === 0 ? 'good' : 'bad');
+
+  G.trickLeader = winner;
+  G.currentTrick = [];
+  G.trickInProgress = false;
+
+  renderTrickArea();
+  renderScorePanel();
+
+  if (G.completedTricks.length === 9) {
+    setTimeout(endRound, 600);
+    return;
+  }
+  advanceTrick();
+}
+
+function endRound() {
+  G.phase = 'score';
+  const hb = G.highBid;
+  const bidTeam = TEAM[hb.player];
+  const bidPts = G.teamTrickPts[bidTeam];
+  let marksWon = [0, 0];
+
+  if (hb.isMarks) {
+    const allTricks = G.completedTricks.every(t => TEAM[t.winner] === bidTeam);
+    if (allTricks) {
+      marksWon[bidTeam] = hb.amount;
+      log(`Player ${hb.player}'s team wins all tricks! +${hb.amount} mark(s).`, 'good');
+    } else {
+      marksWon[1 - bidTeam] = hb.amount;
+      log(`Player ${hb.player}'s team fails mark bid! Opponents +${hb.amount} mark(s).`, 'bad');
+    }
+  } else {
+    if (bidPts >= hb.amount) {
+      marksWon[bidTeam] = 1;
+      log(`Team ${bidTeam === 0 ? 'A' : 'B'} makes bid (${bidPts} pts ≥ ${hb.amount}). +1 mark.`, 'good');
+    } else {
+      marksWon[1 - bidTeam] = 1;
+      log(`Team ${bidTeam === 0 ? 'A' : 'B'} fails bid (${bidPts} pts < ${hb.amount}). Opponents +1 mark.`, 'bad');
+    }
+  }
+
+  G.teamScores[0] += marksWon[0];
+  G.teamScores[1] += marksWon[1];
+  G.bidStartIdx = (G.bidStartIdx + 1) % 6;
+
+  renderScoreBar();
+  showResultPanel(marksWon);
+
+  if (G.teamScores[0] >= 7 || G.teamScores[1] >= 7) {
+    setTimeout(() => {
+      hideResultPanel();
+      showGameOver();
+    }, 200);
+  }
+}
+
+// ─────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────
+function renderAll() {
+  renderScoreBar();
+  renderPlayerAreas();
+  renderTrickArea();
+  renderHumanHand();
+  renderScorePanel();
+  renderBidInfo();
+  document.getElementById('phase-display').textContent = G.phase.charAt(0).toUpperCase() + G.phase.slice(1);
+  document.getElementById('round-info').textContent = `Round ${G.roundNum} · ${G.phase}`;
+}
+
+function renderScoreBar() {
+  const renderMarks = (team) => {
+    const marks = G.teamScores[team];
+    let html = '';
+    for (let i = 0; i < 7; i++) {
+      html += `<div class="mark ${i < marks ? 'filled' : 'empty'}"></div>`;
+    }
+    return html;
+  };
+  document.getElementById('marksA').innerHTML = renderMarks(0);
+  document.getElementById('marksB').innerHTML = renderMarks(1);
+  document.getElementById('round-info').textContent = `Round ${G.roundNum} · ${G.phase}`;
+}
+
+function renderPlayerAreas() {
+  const table = document.getElementById('table');
+  // remove old player areas
+  table.querySelectorAll('.player-area').forEach(el => el.remove());
+
+  for (let p = 1; p <= 5; p++) {
+    const pos = SEAT_POSITIONS[p];
+    const area = document.createElement('div');
+    area.className = 'player-area';
+    area.id = `player-area-${p}`;
+    Object.assign(area.style, pos);
+    area.style.position = 'absolute';
+
+    const teamClass = TEAM[p] === 0 ? 'teamA' : 'teamB';
+    const isActive = G.phase === 'bid' ? G.currentBidder === p :
+                     G.phase === 'play' ? (G.currentTrick.length === 0 ? G.trickLeader === p :
+                       (G.trickLeader + G.currentTrick.length) % 6 === p) : false;
+
+    const label = document.createElement('div');
+    label.className = `player-label ${teamClass}${isActive ? ' active' : ''}`;
+    label.textContent = `P${p}`;
+    area.appendChild(label);
+
+    const count = document.createElement('div');
+    count.className = 'player-hand-count';
+    count.textContent = `${G.hands[p].length} tiles`;
+    area.appendChild(count);
+
+    // face-down tiles
+    const pile = document.createElement('div');
+    pile.className = 'hand-pile';
+    const show = Math.min(G.hands[p].length, 6);
+    const isHoriz = (p === 3 || p === 4);
+    for (let i = 0; i < show; i++) {
+      const fd = document.createElement('div');
+      fd.className = `face-down${isHoriz ? ' horiz' : ''}`;
+      pile.appendChild(fd);
+    }
+    area.appendChild(pile);
+
+    table.appendChild(area);
+  }
+
+  // player 0 label above hand
+  document.getElementById('human-hint').textContent =
+    G.awaitingHuman ? 'Your turn — click a highlighted domino' :
+    G.phase === 'play' ? 'Waiting...' : '';
+}
+
+function renderTrickArea() {
+  const area = document.getElementById('trick-area');
+  area.innerHTML = '';
+  G.currentTrick.forEach(({ player, domino }) => {
+    const slot = PLAYER_TRICK_SLOT[player];
+    const slotInfo = TRICK_SLOTS[slot];
+    const wrap = document.createElement('div');
+    wrap.style.gridColumn = slotInfo.gridColumn;
+    wrap.style.gridRow = slotInfo.gridRow;
+    wrap.appendChild(buildDomino(domino, false, false, false));
+    area.appendChild(wrap);
+  });
+}
+
+function renderHumanHand() {
+  const container = document.getElementById('human-hand');
+  container.innerHTML = '';
+
+  G.hands[0].forEach(d => {
+    const isLegal = G.awaitingHuman && canPlay(d, G.currentTrick, G.hands[0], G.trump);
+    const isDimmed = G.awaitingHuman && !isLegal;
+    const isTrumpD = G.trump !== null && isTrump(d, G.trump);
+    const el = buildDomino(d, isLegal, isDimmed, isTrumpD);
+    if (isLegal) {
+      el.addEventListener('click', () => {
+        if (!G.awaitingHuman) return;
+        if (!canPlay(d, G.currentTrick, G.hands[0], G.trump)) return;
+        G.awaitingHuman = false;
+        playDomino(0, d);
+      });
+    }
+    container.appendChild(el);
+  });
+}
+
+function renderBidInfo() {
+  const el = document.getElementById('bid-info');
+  if (!G.highBid) {
+    el.textContent = 'No bid yet.';
+  } else {
+    const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : G.highBid.amount;
+    el.innerHTML = `High bid: <b>${bidStr}</b><br>Trump: ${TRUMP_NAMES[G.highBid.trump]}<br>By: Player ${G.highBid.player}`;
+  }
+  const trumpDisp = document.getElementById('trump-display');
+  if (G.trump !== null && G.phase !== 'bid') {
+    trumpDisp.style.display = 'flex';
+    document.getElementById('trump-name').textContent = TRUMP_NAMES[G.trump];
+  } else {
+    trumpDisp.style.display = 'none';
+  }
+}
+
+function renderScorePanel() {
+  document.getElementById('scoreA-pts').textContent = G.teamTrickPts[0];
+  document.getElementById('scoreB-pts').textContent = G.teamTrickPts[1];
+  document.getElementById('tricks-left').textContent = 9 - G.completedTricks.length;
+}
+
+// ─────────────────────────────────────────────
+// DOMINO BUILDER
+// ─────────────────────────────────────────────
+function buildDomino(d, playable, dimmed, trumpMarker) {
+  const el = document.createElement('div');
+  el.className = 'domino vertical';
+  if (playable) el.classList.add('playable');
+  if (dimmed) el.classList.add('dimmed');
+  if (trumpMarker) el.classList.add('trump-marker');
+
+  const topHalf = buildHalf(d.h);
+  const divider = document.createElement('div');
+  divider.className = 'divider';
+  const botHalf = buildHalf(d.l);
+
+  el.appendChild(topHalf);
+  el.appendChild(divider);
+  el.appendChild(botHalf);
+
+  // tooltip
+  el.addEventListener('mouseenter', (e) => showTooltip(e, `${d.h}–${d.l} (set ${d.s})`));
+  el.addEventListener('mouseleave', hideTooltip);
+
+  return el;
+}
+
+function buildHalf(val) {
+  const half = document.createElement('div');
+  half.className = 'half';
+  const grid = document.createElement('div');
+  grid.className = 'pip-grid';
+  const layout = PIP_LAYOUTS[val];
+  for (let i = 0; i < 9; i++) {
+    const pip = document.createElement('div');
+    pip.className = layout[i] ? 'pip' : 'pip hidden';
+    grid.appendChild(pip);
+  }
+  half.appendChild(grid);
+  return half;
+}
+
+// ─────────────────────────────────────────────
+// OVERLAYS
+// ─────────────────────────────────────────────
+function showBidPanel() {
+  const overlay = document.getElementById('bid-overlay');
+  overlay.classList.remove('hidden');
+
+  const hb = G.highBid;
+  const minNumeric = hb && !hb.isMarks ? hb.amount + 1 : 60;
+  const hasHighMark = hb && hb.isMarks;
+
+  document.getElementById('bid-panel-context').textContent =
+    hb ? `Current high bid: ${hb.isMarks ? hb.amount + ' mark(s)' : hb.amount} on ${TRUMP_NAMES[hb.trump]} by P${hb.player}` : 'No bid yet — opens at 60.';
+
+  // trump options
+  const trumpOpts = document.getElementById('trump-options');
+  trumpOpts.innerHTML = '';
+  let selectedTrump = 0;
+  TRUMP_NAMES.forEach((name, i) => {
+    const btn = document.createElement('button');
+    btn.className = `trump-btn${i === 0 ? ' selected' : ''}`;
+    btn.textContent = `${i}\n${name}`;
+    btn.style.whiteSpace = 'pre';
+    btn.addEventListener('click', () => {
+      trumpOpts.querySelectorAll('.trump-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedTrump = i;
+    });
+    trumpOpts.appendChild(btn);
+    if (i === 0) selectedTrump = 0;
+  });
+
+  // numeric
+  const amountInput = document.getElementById('bid-amount');
+  amountInput.value = Math.max(minNumeric, 60);
+  amountInput.min = minNumeric;
+
+  document.getElementById('bid-dec').onclick = () => {
+    amountInput.value = Math.max(minNumeric, parseInt(amountInput.value) - 1);
+  };
+  document.getElementById('bid-inc').onclick = () => {
+    amountInput.value = Math.min(88, parseInt(amountInput.value) + 1);
+  };
+
+  document.getElementById('bid-submit').onclick = () => {
+    const trump = selectedTrump;
+    const amount = parseInt(amountInput.value);
+    if (isNaN(amount) || amount < minNumeric || amount > 88) {
+      alert(`Bid must be between ${minNumeric} and 88.`); return;
+    }
+    G.highBid = { player: 0, isMarks: false, amount, trump };
+    log(`You bid ${amount} on ${TRUMP_NAMES[trump]}.`, 'highlight');
+    hideBidPanel();
+    checkBidEnd();
+  };
+
+  // mark bids
+  const marksRow = document.getElementById('mark-bids-row');
+  marksRow.innerHTML = '';
+  const minMark = hasHighMark ? hb.amount + 1 : 1;
+  for (let m = minMark; m <= minMark + 3; m++) {
+    const btn = document.createElement('button');
+    btn.className = 'mark-bid-btn';
+    btn.textContent = `${m} mark${m > 1 ? 's' : ''}`;
+    btn.addEventListener('click', () => {
+      const trump = selectedTrump;
+      G.highBid = { player: 0, isMarks: true, amount: m, trump };
+      log(`You bid ${m} mark(s) on ${TRUMP_NAMES[trump]}.`, 'highlight');
+      hideBidPanel();
+      checkBidEnd();
+    });
+    marksRow.appendChild(btn);
+  }
+
+  document.getElementById('bid-pass').onclick = () => {
+    if (!G.highBid && G.bidStartIdx === 0) {
+      // bid-start cannot pass if no one else bid
+      const others = G.bidPassed.filter((p, i) => i !== 0 && !p).length;
+      if (others === 0) { alert('You must bid at least 60 — no one else bid!'); return; }
+    }
+    G.bidPassed[0] = true;
+    log('You pass.', 'bad');
+    hideBidPanel();
+    nextBidder();
+  };
+}
+
+function hideBidPanel() {
+  document.getElementById('bid-overlay').classList.add('hidden');
+}
+
+// kitty
+let kittyState = { kittySelected: [], handSelected: [] };
+
+function showKittyPanel() {
+  kittyState = { kittySelected: [], handSelected: [] };
+  const overlay = document.getElementById('kitty-overlay');
+  overlay.classList.remove('hidden');
+  renderKittyPanel();
+}
+
+function renderKittyPanel() {
+  const kd = document.getElementById('kitty-dominoes');
+  const kh = document.getElementById('kitty-hand');
+  kd.innerHTML = '';
+  kh.innerHTML = '';
+
+  G.kitty.forEach((d, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'kitty-domino-wrap';
+    const domEl = buildDomino(d, true, false, isTrump(d, G.trump));
+    domEl.addEventListener('click', () => toggleKittyDomino(i));
+    if (kittyState.kittySelected.includes(i)) {
+      domEl.classList.add('selected');
+      const badge = document.createElement('div');
+      badge.className = 'swap-badge';
+      badge.textContent = '✓';
+      wrap.appendChild(badge);
+    }
+    wrap.appendChild(domEl);
+    kd.appendChild(wrap);
+  });
+
+  const displayHand = [...G.hands[0]];
+  displayHand.forEach((d, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'kitty-domino-wrap';
+    const domEl = buildDomino(d, false, false, isTrump(d, G.trump));
+    domEl.addEventListener('click', () => toggleHandDomino(i));
+    if (kittyState.handSelected.includes(i)) {
+      domEl.classList.add('selected');
+      const badge = document.createElement('div');
+      badge.className = 'swap-badge';
+      badge.textContent = '↑';
+      wrap.appendChild(badge);
+    }
+    wrap.appendChild(domEl);
+    kh.appendChild(wrap);
+  });
+}
+
+function toggleKittyDomino(i) {
+  const idx = kittyState.kittySelected.indexOf(i);
+  if (idx >= 0) {
+    kittyState.kittySelected.splice(idx, 1);
+  } else {
+    if (kittyState.kittySelected.length >= 2) return;
+    kittyState.kittySelected.push(i);
+  }
+  renderKittyPanel();
+}
+
+function toggleHandDomino(i) {
+  const idx = kittyState.handSelected.indexOf(i);
+  if (idx >= 0) {
+    kittyState.handSelected.splice(idx, 1);
+  } else {
+    kittyState.handSelected.push(i);
+  }
+  renderKittyPanel();
+}
+
+function hideKittyPanel() {
+  document.getElementById('kitty-overlay').classList.add('hidden');
+}
+
+function showResultPanel(marksWon) {
+  const overlay = document.getElementById('result-overlay');
+  overlay.classList.remove('hidden');
+  const hb = G.highBid;
+  const bidStr = hb.isMarks ? `${hb.amount} mark(s)` : hb.amount;
+  document.getElementById('result-title').textContent = 'Round Complete';
+  document.getElementById('result-summary').textContent =
+    `P${hb.player} bid ${bidStr} on ${TRUMP_NAMES[hb.trump]}`;
+
+  const table = document.getElementById('result-table');
+  table.innerHTML = `
+    <tr><td>Team A points</td><td>${G.teamTrickPts[0]}</td></tr>
+    <tr><td>Team B points</td><td>${G.teamTrickPts[1]}</td></tr>
+    <tr><td>Team A marks won</td><td>${marksWon[0]}</td></tr>
+    <tr><td>Team B marks won</td><td>${marksWon[1]}</td></tr>
+    <tr><td>Team A total marks</td><td>${G.teamScores[0]}</td></tr>
+    <tr><td>Team B total marks</td><td>${G.teamScores[1]}</td></tr>
+  `;
+}
+
+function hideResultPanel() {
+  document.getElementById('result-overlay').classList.add('hidden');
+}
+
+function showGameOver() {
+  document.getElementById('gameover-overlay').classList.remove('hidden');
+  const winner = G.teamScores[0] >= 7 ? 'Team A' : 'Team B';
+  document.getElementById('gameover-title').textContent = winner === 'Team A' ? '🎉 You Win!' : 'Team B Wins';
+  document.getElementById('gameover-text').textContent =
+    `Final score: Team A ${G.teamScores[0]}–${G.teamScores[1]} Team B`;
+}
+
+// ─────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────
+function aiDelay() {
+  return AI_DELAY_MIN + Math.random() * (AI_DELAY_MAX - AI_DELAY_MIN);
+}
+
+function highlightCurrentPlayer(idx) {
+  document.querySelectorAll('.player-label').forEach(el => el.classList.remove('active'));
+  if (idx > 0) {
+    const area = document.getElementById(`player-area-${idx}`);
+    if (area) area.querySelector('.player-label')?.classList.add('active');
+  }
+}
+
+function log(msg, type = '') {
+  const el = document.getElementById('log-entries');
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.textContent = msg;
+  el.appendChild(entry);
+  el.scrollTop = el.scrollHeight;
+}
+
+function showTooltip(e, text) {
+  const tt = document.getElementById('tooltip');
+  tt.textContent = text;
+  tt.style.display = 'block';
+  tt.style.left = (e.clientX + 12) + 'px';
+  tt.style.top = (e.clientY - 24) + 'px';
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').style.display = 'none';
+}
+
+// ─────────────────────────────────────────────
+// EVENT WIRING
+// ─────────────────────────────────────────────
+document.getElementById('kitty-confirm').addEventListener('click', () => {
+  // perform swaps
+  const ks = kittyState.kittySelected;
+  const hs = kittyState.handSelected;
+
+  if (ks.length !== hs.length && ks.length > 0) {
+    alert(`Select equal numbers from kitty and hand to swap (${ks.length} kitty, ${hs.length} hand selected).`);
+    return;
+  }
+
+  // swap selected kitty → hand, hand → kitty
+  ks.forEach((ki, idx) => {
+    const hi = hs[idx];
+    const tmp = G.kitty[ki];
+    G.kitty[ki] = G.hands[0][hi];
+    G.hands[0][hi] = tmp;
+  });
+
+  log(`You swap ${ks.length} domino(es) with the kitty.`);
+  hideKittyPanel();
+  startPlay();
+});
+
+document.getElementById('result-continue').addEventListener('click', () => {
+  hideResultPanel();
+  if (G.teamScores[0] < 7 && G.teamScores[1] < 7) {
+    startRound();
+  }
+});
+
+document.getElementById('gameover-newgame').addEventListener('click', () => {
+  document.getElementById('gameover-overlay').classList.add('hidden');
+  initGame();
+});
+
+// ─────────────────────────────────────────────
+// START
+// ─────────────────────────────────────────────
+initGame();
 </script>
 </body>
 </html>
