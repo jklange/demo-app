@@ -699,8 +699,8 @@ function trumpRank(d, trump) {
 }
 
 function suitRank(d, suit) {
-  // lower pip (the non-suit pip) used for comparison within suit
-  return d.l;
+  if (d.h === d.l) return 20; // double is always highest in its suit
+  return d.h === suit ? d.l : d.h; // the pip that is not the suit pip
 }
 
 function dominoPoints(d) {
@@ -720,10 +720,10 @@ function canPlay(d, trick, hand, trump) {
     if (hasTrump) return isTrump(d, trump);
     return true; // void in trump
   } else {
-    // must follow suit if possible
-    const hasSuit = hand.some(x => !isTrump(x, trump) && x.h === ledSuit);
-    if (hasSuit) return !isTrump(d, trump) && d.h === ledSuit;
-    return true; // void in suit
+    // must follow suit: any non-trump domino bearing the suit pip (either side) counts
+    const hasSuit = hand.some(x => !isTrump(x, trump) && (x.h === ledSuit || x.l === ledSuit));
+    if (hasSuit) return !isTrump(d, trump) && (d.h === ledSuit || d.l === ledSuit);
+    return true; // void in suit — play anything
   }
 }
 
@@ -739,7 +739,7 @@ function trickWinner(trick, trump) {
     let score = -1;
     if (isTrump(domino, trump)) {
       score = 100 + trumpRank(domino, trump);
-    } else if (!ledIsTrump && domino.h === ledSuit) {
+    } else if (!ledIsTrump && (domino.h === ledSuit || domino.l === ledSuit)) {
       score = 50 + suitRank(domino, ledSuit);
     }
     // first played wins ties (score stays -1 overrides nothing)
