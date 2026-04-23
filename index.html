@@ -210,14 +210,16 @@
     }
     .face-down {
       width: 16px;
-      height: 28px;
-      background: var(--domino-face-down);
+      height: 30px;
+      background: var(--domino-bg);
       border-radius: 3px;
-      border: 1px solid #1a2a1e;
-    }
-    .face-down.horiz {
-      width: 28px;
-      height: 16px;
+      border: 1px solid #c8bfa0;
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+      background-image: linear-gradient(to bottom,
+        transparent calc(50% - 0.5px),
+        #a09070 calc(50% - 0.5px),
+        #a09070 calc(50% + 0.5px),
+        transparent calc(50% + 0.5px));
     }
 
     /* trick area — now just a transparent layer; dominoes positioned absolutely by JS */
@@ -1143,6 +1145,7 @@ function playDomino(playerIdx, domino) {
   G.awaitingHuman = false;
   renderTrickArea();
   renderHumanHand();
+  renderPlayerAreas();
   if (G.currentTrick.length === 6) {
     G.trickInProgress = true;
     setTimeout(resolveTrick, TRICK_PAUSE);
@@ -1360,11 +1363,9 @@ function renderPlayerAreas() {
     // face-down tiles
     const pile = document.createElement('div');
     pile.className = 'hand-pile';
-    const show = Math.min(G.hands[p].length, 6);
-    const isHoriz = (p === 3 || p === 4);
-    for (let i = 0; i < show; i++) {
+    for (let i = 0; i < G.hands[p].length; i++) {
       const fd = document.createElement('div');
-      fd.className = `face-down${isHoriz ? ' horiz' : ''}`;
+      fd.className = 'face-down';
       pile.appendChild(fd);
     }
     area.appendChild(pile);
