@@ -205,21 +205,18 @@
 
     /* face-down domino pile */
     .hand-pile {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(3, auto);
       gap: 2px;
+      width: fit-content;
     }
     .face-down {
-      width: 16px;
-      height: 30px;
+      width: 30px;
+      height: 16px;
       background: var(--domino-bg);
       border-radius: 3px;
       border: 1px solid #c8bfa0;
       box-shadow: 1px 1px 3px rgba(0,0,0,0.4);
-      background-image: linear-gradient(to bottom,
-        transparent calc(50% - 0.5px),
-        #a09070 calc(50% - 0.5px),
-        #a09070 calc(50% + 0.5px),
-        transparent calc(50% + 0.5px));
     }
 
     /* trick area — now just a transparent layer; dominoes positioned absolutely by JS */
