@@ -1479,7 +1479,18 @@ function renderAll() {
   renderScorePanel();
   renderBidInfo();
   renderTricksWon();
-  document.getElementById('phase-display').textContent = G.phase.charAt(0).toUpperCase() + G.phase.slice(1);
+  {
+    const phaseLabel = G.phase.charAt(0).toUpperCase() + G.phase.slice(1);
+    let activePlayerLabel = '';
+    if (G.phase === 'bid' && G.currentBidder != null) {
+      const name = G.currentBidder === NET.myIdx ? 'You' : (NET.playerNames[G.currentBidder] || `P${G.currentBidder}`);
+      activePlayerLabel = ` — ${name}`;
+    } else if (G.phase === 'play' && G.awaitingPlayer != null) {
+      const name = G.awaitingPlayer === NET.myIdx ? 'You' : (NET.playerNames[G.awaitingPlayer] || `P${G.awaitingPlayer}`);
+      activePlayerLabel = ` — ${name}`;
+    }
+    document.getElementById('phase-display').textContent = phaseLabel + activePlayerLabel;
+  }
   document.getElementById('round-info').textContent = `Round ${G.roundNum} · ${G.phase}`;
 }
 
