@@ -1318,6 +1318,26 @@ function sortHand(hand, trump) {
   });
 }
 
+function sortHandByNumber(hand, n) {
+  // Groups: 0=contains n, 1=doubles (not n), 2=count (not n), 3=other
+  function group(d) {
+    if (d.h === n || d.l === n) return 0;
+    if (d.h === d.l) return 1;
+    if (dominoPoints(d) > 0) return 2;
+    return 3;
+  }
+  function rank(d, g) {
+    if (g === 0) return d.h === n && d.l === n ? n : (d.h === n ? d.l : d.h);
+    if (g === 1) return d.h;
+    return d.h + d.l;
+  }
+  hand.sort((a, b) => {
+    const ga = group(a), gb = group(b);
+    if (ga !== gb) return ga - gb;
+    return rank(b, gb) - rank(a, ga);
+  });
+}
+
 function startPlay() {
   hideKittyPanel();
   G.phase = 'play';
@@ -1687,6 +1707,17 @@ function renderHumanHand() {
 
         G.awaitingPlayer = null;
         playDomino(NET.myIdx, d);
+      });
+    }
+    if (G.phase === 'bid') {
+      const halves = el.querySelectorAll('.half');
+      [[halves[0], d.h], [halves[1], d.l]].forEach(([half, val]) => {
+        half.style.cursor = 'pointer';
+        half.addEventListener('click', (e) => {
+          e.stopPropagation();
+          sortHandByNumber(G.hands[NET.myIdx], val);
+          renderHumanHand();
+        });
       });
     }
     container.appendChild(el);
