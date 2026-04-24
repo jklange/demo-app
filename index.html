@@ -44,21 +44,21 @@
       align-items: center;
       justify-content: space-between;
       flex-shrink: 0;
-      font-size: 14px;
+      font-size: 16px;
     }
     #scorebar .team {
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .team-label { font-weight: 700; font-size: 15px; }
+    .team-label { font-weight: 700; font-size: 16px; }
     .teamA-label { color: var(--teamA); }
     .teamB-label { color: var(--teamB); }
     .marks { display: flex; gap: 3px; }
     .mark { width: 14px; height: 14px; border-radius: 50%; }
     .mark.filled { background: var(--gold); }
     .mark.empty { background: var(--border); border: 1px solid var(--muted); }
-    #round-info { color: var(--muted); font-size: 13px; text-align: center; flex: 1; }
+    #round-info { color: var(--muted); font-size: 16px; text-align: center; flex: 1; }
 
     /* ── MAIN LAYOUT ── */
     #main {
@@ -87,7 +87,7 @@
     #tricks-col-b { border-left: 1px solid var(--border); }
     .tricks-col-header {
       padding: 5px 8px;
-      font-size: 11px;
+      font-size: 16px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -96,7 +96,7 @@
     }
     .tricks-col-header.teamA { color: var(--teamA); }
     .tricks-col-header.teamB { color: var(--teamB); }
-    .trick-count { display: block; font-size: 10px; font-weight: 400; color: var(--muted); margin-top: 1px; }
+    .trick-count { display: block; font-size: 16px; font-weight: 400; color: var(--muted); margin-top: 1px; }
     .tricks-rows {
       flex: 1;
       overflow-y: auto;
@@ -126,7 +126,7 @@
       aspect-ratio: 25 / 48;
     }
     .trick-pts-badge {
-      font-size: 11px;
+      font-size: 16px;
       color: var(--muted);
       padding-left: 2px;
     }
@@ -148,7 +148,7 @@
     }
     #log-panel h3 {
       padding: 8px 10px;
-      font-size: 12px;
+      font-size: 16px;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: var(--muted);
@@ -164,7 +164,7 @@
       gap: 3px;
     }
     .log-entry {
-      font-size: 12px;
+      font-size: 16px;
       color: var(--muted);
       line-height: 1.4;
     }
@@ -188,7 +188,7 @@
       gap: 4px;
     }
     .player-label {
-      font-size: 12px;
+      font-size: 16px;
       font-weight: 600;
       padding: 2px 8px;
       border-radius: 10px;
@@ -198,11 +198,11 @@
     .player-label.teamB { color: var(--teamB); border: 1px solid var(--teamB); }
     .player-label.active { box-shadow: 0 0 8px currentColor; }
     .player-hand-count {
-      font-size: 11px;
+      font-size: 16px;
       color: var(--muted);
     }
     .bid-badge {
-      font-size: 11px;
+      font-size: 16px;
       padding: 2px 6px;
       border-radius: 4px;
       background: rgba(0,0,0,0.5);
@@ -332,18 +332,18 @@
       overflow-y: auto;
     }
     #right-panel h3 {
-      font-size: 12px;
+      font-size: 16px;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: var(--muted);
     }
     #phase-display {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 600;
       color: var(--gold);
     }
     #bid-info {
-      font-size: 13px;
+      font-size: 16px;
       color: var(--muted);
       line-height: 1.6;
     }
@@ -351,7 +351,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 13px;
+      font-size: 16px;
     }
     .trump-pip {
       width: 14px;
@@ -360,7 +360,7 @@
       background: #ff9800;
     }
     #trick-score {
-      font-size: 13px;
+      font-size: 16px;
       line-height: 1.8;
       color: var(--muted);
     }
@@ -389,8 +389,8 @@
       flex-direction: column;
       gap: 16px;
     }
-    .panel h2 { font-size: 20px; color: var(--gold); }
-    .panel p { font-size: 14px; color: var(--muted); line-height: 1.5; }
+    .panel h2 { font-size: 22px; color: var(--gold); }
+    .panel p { font-size: 16px; color: var(--muted); line-height: 1.5; }
 
     /* bid panel */
     #bid-panel .trump-options {
@@ -405,7 +405,7 @@
       background: var(--surface);
       color: var(--text);
       cursor: pointer;
-      font-size: 12px;
+      font-size: 16px;
       text-align: center;
       transition: all 0.15s;
     }
@@ -427,7 +427,7 @@
       border-radius: 6px;
       border: none;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 600;
       transition: all 0.15s;
     }
@@ -447,7 +447,7 @@
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--text);
-      font-size: 15px;
+      font-size: 16px;
       text-align: center;
     }
     .marks-row {
@@ -462,7 +462,7 @@
       background: var(--surface);
       color: var(--muted);
       cursor: pointer;
-      font-size: 13px;
+      font-size: 16px;
     }
     .mark-bid-btn:hover { border-color: var(--gold); color: var(--gold); }
 
@@ -473,7 +473,7 @@
       justify-content: center;
     }
     #kitty-panel .instructions {
-      font-size: 13px;
+      font-size: 16px;
       color: var(--muted);
     }
     #kitty-hand {
@@ -490,7 +490,7 @@
       right: -6px;
       background: var(--teamB);
       color: #fff;
-      font-size: 10px;
+      font-size: 16px;
       border-radius: 50%;
       width: 14px;
       height: 14px;
@@ -502,7 +502,7 @@
 
     /* round result */
     #result-panel .result-table {
-      font-size: 13px;
+      font-size: 16px;
       width: 100%;
       border-collapse: collapse;
     }
@@ -514,15 +514,15 @@
 
     /* game over */
     #gameover-panel { text-align: center; }
-    #gameover-panel h2 { font-size: 30px; }
-    #gameover-panel .winner-text { font-size: 17px; color: var(--text); }
+    #gameover-panel h2 { font-size: 32px; }
+    #gameover-panel .winner-text { font-size: 18px; color: var(--text); }
 
     /* tooltip */
     #tooltip {
       position: fixed;
       background: rgba(0,0,0,0.85);
       color: #fff;
-      font-size: 12px;
+      font-size: 16px;
       padding: 4px 8px;
       border-radius: 4px;
       pointer-events: none;
@@ -547,7 +547,7 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 16px;
     }
     .seat-row.mine { border-color: var(--teamA); }
     .seat-num { font-weight: 700; width: 50px; flex-shrink: 0; }
@@ -563,7 +563,7 @@
       background: var(--surface2);
       color: var(--muted);
       cursor: pointer;
-      font-size: 12px;
+      font-size: 16px;
     }
     .seat-toggle:hover { border-color: var(--muted); color: var(--text); }
     .seat-toggle.open { border-color: var(--teamA); color: var(--teamA); }
@@ -577,7 +577,7 @@
       border-radius: 8px;
     }
     .room-code-val {
-      font-size: 26px;
+      font-size: 28px;
       font-weight: 700;
       letter-spacing: 4px;
       color: var(--gold);
@@ -585,7 +585,7 @@
       flex: 1;
     }
     .lobby-status {
-      font-size: 13px;
+      font-size: 16px;
       color: var(--muted);
       text-align: center;
       padding: 8px;
@@ -599,19 +599,19 @@
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--text);
-      font-size: 17px;
+      font-size: 18px;
       letter-spacing: 3px;
       text-transform: uppercase;
       font-family: monospace;
     }
     .text-input:focus { outline: none; border-color: var(--teamA); }
     .waiting-indicator {
-      font-size: 13px;
+      font-size: 16px;
       color: var(--muted);
       padding: 6px 0;
     }
     .remote-indicator {
-      font-size: 10px;
+      font-size: 16px;
       padding: 1px 5px;
       border-radius: 3px;
       background: rgba(74,158,255,0.2);
@@ -626,7 +626,7 @@
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--text);
-      font-size: 15px;
+      font-size: 16px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     .name-input:focus { outline: none; border-color: var(--teamA); }
@@ -638,16 +638,16 @@
 <div id="scorebar">
   <div class="team">
     <span class="team-label teamA-label">Team A</span>
-    <span style="font-size:11px;color:var(--muted)" id="team-a-players">(You, P2, P4)</span>
+    <span style="font-size:16px;color:var(--muted)" id="team-a-players">(You, P2, P4)</span>
     <div class="marks" id="marksA"></div>
   </div>
   <div id="round-info">Round 1 · Deal</div>
   <div class="team">
     <div class="marks" id="marksB"></div>
-    <span style="font-size:11px;color:var(--muted)" id="team-b-players">(P1, P3, P5)</span>
+    <span style="font-size:16px;color:var(--muted)" id="team-b-players">(P1, P3, P5)</span>
     <span class="team-label teamB-label">Team B</span>
   </div>
-  <button class="btn btn-muted" id="quit-btn" style="font-size:11px;padding:4px 10px;margin-left:12px;flex-shrink:0">Quit</button>
+  <button class="btn btn-muted" id="quit-btn" style="font-size:16px;padding:4px 10px;margin-left:12px;flex-shrink:0">Quit</button>
 </div>
 
 <!-- MAIN -->
@@ -670,7 +670,7 @@
     <div id="trick-area"></div>
     <div id="human-hand-area">
       <div id="human-bid-badge" class="bid-badge" style="display:none"></div>
-      <div style="font-size:11px;color:var(--muted)" id="human-hint"></div>
+      <div style="font-size:16px;color:var(--muted)" id="human-hint"></div>
       <div id="human-hand"></div>
     </div>
   </div>
@@ -706,11 +706,11 @@
     <h2>Your Bid</h2>
     <p id="bid-panel-context">Current high bid: none</p>
     <div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Select Trump Suit</div>
+      <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Select Trump Suit</div>
       <div class="trump-options" id="trump-options"></div>
     </div>
     <div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Numeric Bid (60–87)</div>
+      <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Numeric Bid (60–87)</div>
       <div class="bid-amount-row">
         <button class="btn btn-muted" id="bid-dec">−</button>
         <input class="num-input" type="number" id="bid-amount" value="60" min="60" max="87" />
@@ -719,7 +719,7 @@
       </div>
     </div>
     <div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Mark Bid</div>
+      <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Mark Bid</div>
       <div class="marks-row" id="mark-bids-row"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px">
@@ -734,11 +734,11 @@
     <h2>Kitty</h2>
     <p class="instructions">Click kitty dominoes to swap them into your hand. You may swap up to 2. When done, click Confirm.</p>
     <div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Kitty (2 dominoes)</div>
+      <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Kitty (2 dominoes)</div>
       <div class="kitty-dominoes" id="kitty-dominoes"></div>
     </div>
     <div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Your Hand — click to swap out</div>
+      <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Your Hand — click to swap out</div>
       <div id="kitty-hand"></div>
     </div>
     <div style="display:flex;gap:8px">
@@ -2255,7 +2255,7 @@ function renderLobby() {
       }
 
       const teamTag = document.createElement('div');
-      teamTag.style.cssText = 'font-size:10px;color:var(--muted);flex-shrink:0';
+      teamTag.style.cssText = 'font-size:16px;color:var(--muted);flex-shrink:0';
       teamTag.textContent = `Team ${TEAM[i] === 0 ? 'A' : 'B'}`;
       row.appendChild(teamTag);
 
@@ -2310,7 +2310,7 @@ function renderLobby() {
       content.appendChild(info);
 
       const nameLabel = document.createElement('div');
-      nameLabel.style.cssText = 'font-size:12px;color:var(--muted);margin-top:12px;margin-bottom:4px';
+      nameLabel.style.cssText = 'font-size:16px;color:var(--muted);margin-top:12px;margin-bottom:4px';
       nameLabel.textContent = 'Your Name';
       content.appendChild(nameLabel);
 
@@ -2323,7 +2323,7 @@ function renderLobby() {
       nameInput.maxLength = 20;
       nameInput.placeholder = 'Your name';
       nameInput.value = NET.playerNames[NET.myIdx] || NET.myName || '';
-      nameInput.style.cssText = 'flex:1;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-family:inherit';
+      nameInput.style.cssText = 'flex:1;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;font-family:inherit';
 
       const saveBtn = document.createElement('button');
       saveBtn.className = 'btn btn-muted';
@@ -2375,7 +2375,7 @@ function renderJoinForm() {
 
   // Name row
   const nameLabel = document.createElement('div');
-  nameLabel.style.cssText = 'font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:8px';
+  nameLabel.style.cssText = 'font-size:16px;color:var(--muted);margin-bottom:4px;margin-top:8px';
   nameLabel.textContent = 'Your Name';
   content.appendChild(nameLabel);
 
@@ -2386,11 +2386,11 @@ function renderJoinForm() {
   nameInput.placeholder = 'Enter your name';
   nameInput.autocomplete = 'off';
   nameInput.value = NET.myName || '';
-  nameInput.style.cssText = 'display:block;width:100%;margin-bottom:12px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-family:inherit';
+  nameInput.style.cssText = 'display:block;width:100%;margin-bottom:12px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;font-family:inherit';
   content.appendChild(nameInput);
 
   const codeLabel = document.createElement('div');
-  codeLabel.style.cssText = 'font-size:12px;color:var(--muted);margin-bottom:4px';
+  codeLabel.style.cssText = 'font-size:16px;color:var(--muted);margin-bottom:4px';
   codeLabel.textContent = 'Room Code';
   content.appendChild(codeLabel);
 
