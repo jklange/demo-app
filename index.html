@@ -69,47 +69,6 @@
       gap: 0;
       overflow: hidden;
     }
-    /* ≤1400px: iPad landscape (incl. iPad Pro) — hide log, give table more room, shrink dominoes */
-    @media (max-width: 1400px) {
-      #log-panel { display: none; }
-      #main { grid-template-columns: 140px 1fr 140px 120px; }
-      /* Explicit column assignments so Safari doesn't mis-place items when log-panel is hidden */
-      #tricks-col-a { grid-column: 1; }
-      #table        { grid-column: 2; }
-      #tricks-col-b { grid-column: 3; }
-      #right-panel  { grid-column: 4; }
-      .domino.vertical { width: 58px; height: 110px; }
-      .domino.horizontal { width: 110px; height: 58px; }
-      .domino { border-radius: 8px; border-width: 3px; }
-      .pip-grid { width: 38px; height: 38px; }
-      .domino.horizontal .pip-grid { width: 35px; height: 35px; }
-      .pip { width: 8px; height: 8px; }
-      .domino.vertical .divider { margin: 0 6px; }
-      .domino.horizontal .divider { margin: 6px 0; }
-      .player-label { font-size: 20px; }
-      .bid-badge { font-size: 20px; }
-      #human-hint { font-size: 20px; }
-    }
-    /* ≤800px: iPad portrait — shrink columns further, shrink dominoes more */
-    @media (max-width: 800px) {
-      #main { grid-template-columns: 100px 1fr 100px 80px; }
-      #tricks-col-a { grid-column: 1; }
-      #table        { grid-column: 2; }
-      #tricks-col-b { grid-column: 3; }
-      #right-panel  { grid-column: 4; }
-      .domino.vertical { width: 44px; height: 84px; }
-      .domino.horizontal { width: 84px; height: 44px; }
-      .domino { border-radius: 6px; border-width: 2px; }
-      .pip-grid { width: 28px; height: 28px; }
-      .domino.horizontal .pip-grid { width: 26px; height: 26px; }
-      .pip { width: 6px; height: 6px; }
-      .domino.vertical .divider { margin: 0 4px; }
-      .domino.horizontal .divider { margin: 4px 0; }
-      .player-label { font-size: 16px; }
-      .bid-badge { font-size: 16px; }
-      #human-hint { font-size: 16px; }
-    }
-
     /* ── TRICKS COLUMNS ── */
     .tricks-col {
       display: flex;
