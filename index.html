@@ -386,7 +386,7 @@
     /* bid panel */
     #bid-panel .trump-options {
       display: grid;
-      grid-template-columns: repeat(7, 1fr);
+      grid-template-columns: repeat(7, 1fr) 1.4fr;
       gap: 6px;
     }
     .trump-btn {
@@ -402,6 +402,8 @@
     }
     .trump-btn:hover { border-color: var(--muted); }
     .trump-btn.selected { border-color: #ff9800; background: rgba(255,152,0,0.2); color: #ff9800; }
+    .trump-btn.follow-me { border-style: dashed; }
+    .trump-btn.follow-me.selected { border-style: dashed; }
     .bid-controls {
       display: flex;
       gap: 8px;
@@ -835,7 +837,8 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes'];
+const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
+const FOLLOW_ME = 7;
 const TEAM = [0, 1, 0, 1, 0, 1]; // player index → team (0=A, 1=B)
 const AI_DELAY_MIN = 700;
 const AI_DELAY_MAX = 1100;
@@ -961,6 +964,7 @@ function deal() {
 function dominoId(d) { return `${d.h}-${d.l}-${d.s}`; }
 
 function isTrump(d, trump) {
+  if (trump === FOLLOW_ME) return false;
   return d.h === trump || d.l === trump;
 }
 
@@ -1260,7 +1264,8 @@ function finishBidding() {
   G.bidWinner = G.highBid.player;
   G.trump = G.highBid.trump;
   const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : G.highBid.amount;
-  log(`Bidding over. Player ${G.bidWinner} wins at ${bidStr} on ${TRUMP_NAMES[G.trump]}.`, 'good');
+  const trumpDesc = G.trump === FOLLOW_ME ? 'Follow Me (no trump)' : TRUMP_NAMES[G.trump];
+  log(`Bidding over. Player ${G.bidWinner} wins at ${bidStr} — ${trumpDesc}.`, 'good');
   G.phase = 'kitty';
 
   if (G.bidWinner === NET.myIdx) {
@@ -1641,7 +1646,14 @@ function renderBidInfo() {
   const trumpDisp = document.getElementById('trump-display');
   if (G.trump !== null && G.phase !== 'bid') {
     trumpDisp.style.display = 'flex';
-    document.getElementById('trump-name').textContent = TRUMP_NAMES[G.trump];
+    const pip = trumpDisp.querySelector('.trump-pip');
+    if (G.trump === FOLLOW_ME) {
+      pip.style.display = 'none';
+      document.getElementById('trump-name').textContent = 'No Trump (Follow Me)';
+    } else {
+      pip.style.display = '';
+      document.getElementById('trump-name').textContent = TRUMP_NAMES[G.trump];
+    }
   } else {
     trumpDisp.style.display = 'none';
   }
@@ -1712,8 +1724,13 @@ function showBidPanel() {
   let selectedTrump = 0;
   TRUMP_NAMES.forEach((name, i) => {
     const btn = document.createElement('button');
-    btn.className = `trump-btn${i === 0 ? ' selected' : ''}`;
-    btn.textContent = `${i}\n${name}`;
+    btn.className = `trump-btn${i === 0 ? ' selected' : ''}${i === FOLLOW_ME ? ' follow-me' : ''}`;
+    if (i === FOLLOW_ME) {
+      btn.textContent = name;
+      btn.style.fontStyle = 'italic';
+    } else {
+      btn.textContent = `${i}\n${name}`;
+    }
     btn.style.whiteSpace = 'pre';
     btn.addEventListener('click', () => {
       trumpOpts.querySelectorAll('.trump-btn').forEach(b => b.classList.remove('selected'));
@@ -1900,7 +1917,7 @@ function showResultPanel(marksWon) {
   const bidStr = hb.isMarks ? `${hb.amount} mark(s)` : hb.amount;
   document.getElementById('result-title').textContent = 'Round Complete';
   document.getElementById('result-summary').textContent =
-    `P${hb.player} bid ${bidStr} on ${TRUMP_NAMES[hb.trump]}`;
+    `P${hb.player} bid ${bidStr} on ${hb.trump === FOLLOW_ME ? 'Follow Me (no trump)' : TRUMP_NAMES[hb.trump]}`;
   const btn = document.getElementById('result-continue');
   if (NET.mode === 'client') {
     btn.textContent = 'Waiting for host…';
