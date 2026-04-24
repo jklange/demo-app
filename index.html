@@ -389,11 +389,25 @@
     .panel p { font-size: 16px; color: var(--muted); line-height: 1.5; }
 
     /* bid panel */
+    #bid-panel { max-width: min(640px, calc(100vw - 32px)); }
     #bid-panel .trump-options {
       display: grid;
       grid-template-columns: repeat(7, 1fr) 1.4fr;
       gap: 6px;
     }
+    .bid-status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 15px;
+      border-bottom: 1px solid var(--border);
+    }
+    .bid-status-row:last-child { border-bottom: none; }
+    .bid-status-name { color: var(--text); font-weight: 600; }
+    .bid-status-val { }
+    .bid-status-val.passed { color: var(--teamB); }
+    .bid-status-val.bid { color: var(--teamA); }
     .trump-btn {
       padding: 8px 4px;
       border-radius: 6px;
@@ -755,6 +769,10 @@
   <div class="panel" id="bid-panel">
     <h2>Your Bid</h2>
     <p id="bid-panel-context">Current high bid: none</p>
+    <div id="bid-status-section" style="display:none">
+      <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Bids So Far</div>
+      <div id="bid-status-list"></div>
+    </div>
     <div>
       <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Select Trump Suit</div>
       <div class="trump-options" id="trump-options"></div>
@@ -1737,6 +1755,36 @@ function showBidPanel() {
 
   document.getElementById('bid-panel-context').textContent =
     hb ? `Current high bid: ${hb.isMarks ? hb.amount + ' mark(s)' : hb.amount} on ${TRUMP_NAMES[hb.trump]} by P${hb.player}` : 'No bid yet — opens at 60.';
+
+  const statusSection = document.getElementById('bid-status-section');
+  const statusList = document.getElementById('bid-status-list');
+  const anyActed = G.playerBids && G.playerBids.some(b => b !== null);
+  if (anyActed) {
+    statusSection.style.display = '';
+    statusList.innerHTML = '';
+    G.playerBids.forEach((bid, i) => {
+      if (bid === null) return;
+      const row = document.createElement('div');
+      row.className = 'bid-status-row';
+      const nameEl = document.createElement('span');
+      nameEl.className = 'bid-status-name';
+      nameEl.textContent = i === NET.myIdx ? 'You' : (NET.playerNames[i] || `P${i}`);
+      const valEl = document.createElement('span');
+      valEl.className = 'bid-status-val';
+      if (bid === 'pass') {
+        valEl.textContent = 'Pass';
+        valEl.classList.add('passed');
+      } else {
+        valEl.textContent = `${bid.isMarks ? bid.amount + ' mark(s)' : bid.amount} on ${TRUMP_NAMES[bid.trump]}`;
+        valEl.classList.add('bid');
+      }
+      row.appendChild(nameEl);
+      row.appendChild(valEl);
+      statusList.appendChild(row);
+    });
+  } else {
+    statusSection.style.display = 'none';
+  }
 
   const trumpOpts = document.getElementById('trump-options');
   trumpOpts.innerHTML = '';
