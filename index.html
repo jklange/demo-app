@@ -2216,7 +2216,16 @@ function renderLobby() {
 
       if (i === 0) {
         status.className = 'seat-status you';
-        status.textContent = 'You (host)';
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = NET.playerNames[0] === 'You' ? '' : NET.playerNames[0];
+        nameInput.placeholder = 'Your name (host)';
+        nameInput.maxLength = 20;
+        nameInput.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--gold);color:var(--gold);font-weight:600;font-size:inherit;font-family:inherit;width:150px;outline:none;padding:0 2px;';
+        nameInput.oninput = () => {
+          NET.playerNames[0] = nameInput.value.trim() || 'You';
+        };
+        status.appendChild(nameInput);
       } else if (NET.playerTypes[i] === 'remote') {
         status.className = 'seat-status filled';
         status.textContent = NET.playerNames[i] || `Player ${i}`;
