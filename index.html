@@ -380,7 +380,10 @@
     .panel p { font-size: 16px; color: var(--muted); line-height: 1.5; }
 
     /* bid panel */
-    #bid-panel { max-width: min(640px, calc(100vw - 32px)); }
+    #bid-panel { max-width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow-y: auto; }
+    #bid-panel-hand { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+    #bid-panel-hand .domino.kitty-size .half { cursor: pointer; }
+    #bid-panel-hand .domino.kitty-size .half:hover { background: rgba(255,255,255,0.08); border-radius: 4px; }
     #bid-panel .trump-options {
       display: grid;
       grid-template-columns: repeat(7, 1fr) 1.4fr;
@@ -758,6 +761,10 @@
   <div class="panel" id="bid-panel">
     <h2>Your Bid</h2>
     <p id="bid-panel-context">Current high bid: none</p>
+    <div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:6px">Your Hand — click either side to group by that number</div>
+      <div id="bid-panel-hand"></div>
+    </div>
     <div id="bid-status-section" style="display:none">
       <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Bids So Far</div>
       <div id="bid-status-list"></div>
@@ -1960,6 +1967,28 @@ function showBidPanel() {
     broadcastState();
     checkBidEnd();
   };
+
+  renderBidPanelHand();
+}
+
+function renderBidPanelHand() {
+  const container = document.getElementById('bid-panel-hand');
+  if (!container) return;
+  container.innerHTML = '';
+  G.hands[NET.myIdx].forEach(d => {
+    const el = buildDomino(d, false, false, false);
+    el.classList.add('kitty-size');
+    const halves = el.querySelectorAll('.half');
+    [[halves[0], d.h], [halves[1], d.l]].forEach(([half, val]) => {
+      half.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sortHandByNumber(G.hands[NET.myIdx], val);
+        renderBidPanelHand();
+        renderHumanHand();
+      });
+    });
+    container.appendChild(el);
+  });
 }
 
 function hideBidPanel() {
