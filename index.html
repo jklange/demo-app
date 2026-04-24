@@ -7,6 +7,7 @@
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; overflow: hidden; }
     :root {
       --bg: #0d2b1a;
       --felt: #1a4a2e;
@@ -27,7 +28,7 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--bg);
       color: var(--text);
-      height: 100vh;
+      height: 100%;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -67,6 +68,12 @@
       grid-template-columns: 180px 200px 1fr 200px 200px;
       gap: 0;
       overflow: hidden;
+    }
+    @media (max-width: 900px) {
+      #main { grid-template-columns: 120px 140px 1fr 140px 110px; }
+    }
+    @media (max-width: 700px) {
+      #main { grid-template-columns: 90px 110px 1fr 110px 90px; }
     }
 
     /* ── TRICKS COLUMNS ── */
@@ -612,6 +619,17 @@
       border: 1px solid rgba(74,158,255,0.4);
       margin-left: 4px;
     }
+    .name-input {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .name-input:focus { outline: none; border-color: var(--teamA); }
   </style>
 </head>
 <body>
@@ -813,6 +831,7 @@ let NET = {
   // 'human' = local human, 'ai' = AI, 'remote' = remote human, 'open' = waiting for human
   playerTypes: ['human', 'ai', 'ai', 'ai', 'ai', 'ai'],
   playerNames: ['You', 'P1', 'P2', 'P3', 'P4', 'P5'],
+  myName: '',         // local player's chosen display name (clients)
   gameStarted: false,
   dropTimers: {},     // seatIdx → timer (60s grace period after disconnect)
   droppedNames: {},   // seatIdx → name of player who dropped
@@ -1991,6 +2010,18 @@ function handleClientMessage(conn, data) {
       startPlay();
       break;
     }
+    case 'setName': {
+      const newName = (data.name || '').trim().slice(0, 20) || `P${playerIdx}`;
+      NET.playerNames[playerIdx] = newName;
+      renderLobby();
+      renderPlayerAreas();
+      renderScoreBar();
+      const nameUpdate = { type: 'nameUpdate', idx: playerIdx, name: newName };
+      Object.values(NET.connections).forEach(conn => {
+        if (conn.open && conn !== NET.connections[playerIdx]) conn.send(nameUpdate);
+      });
+      break;
+    }
   }
 }
 
@@ -1998,7 +2029,15 @@ function handleHostMessage(data) {
   switch (data.type) {
     case 'seat':
       NET.myIdx = data.idx;
+      NET.playerNames[data.idx] = NET.myName || `P${data.idx}`;
+      sendToHost({ type: 'setName', name: NET.playerNames[data.idx] });
       renderLobby();
+      break;
+    case 'nameUpdate':
+      NET.playerNames[data.idx] = data.name;
+      renderLobby();
+      renderPlayerAreas();
+      renderScoreBar();
       break;
     case 'state':
       G = data.G;
@@ -2209,7 +2248,6 @@ function renderLobby() {
     content.innerHTML = '';
 
     if (NET.myIdx === 0) {
-      // Not yet assigned a seat
       const status = document.createElement('div');
       status.className = 'lobby-status';
       status.textContent = 'Connecting...';
@@ -2219,6 +2257,39 @@ function renderLobby() {
       info.className = 'lobby-status ok';
       info.textContent = `You are Seat ${NET.myIdx} (Team ${TEAM[NET.myIdx] === 0 ? 'A' : 'B'}). Waiting for host to start…`;
       content.appendChild(info);
+
+      const nameLabel = document.createElement('div');
+      nameLabel.style.cssText = 'font-size:12px;color:var(--muted);margin-top:12px;margin-bottom:4px';
+      nameLabel.textContent = 'Your Name';
+      content.appendChild(nameLabel);
+
+      const nameRow = document.createElement('div');
+      nameRow.style.cssText = 'display:flex;gap:8px;align-items:center';
+
+      const nameInput = document.createElement('input');
+      nameInput.className = 'name-input';
+      nameInput.type = 'text';
+      nameInput.maxLength = 20;
+      nameInput.placeholder = 'Your name';
+      nameInput.value = NET.playerNames[NET.myIdx] || NET.myName || '';
+      nameInput.style.cssText = 'flex:1;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-family:inherit';
+
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'btn btn-muted';
+      saveBtn.style.fontSize = '12px';
+      saveBtn.textContent = 'Save';
+      saveBtn.onclick = () => {
+        const n = nameInput.value.trim() || `P${NET.myIdx}`;
+        NET.myName = n;
+        NET.playerNames[NET.myIdx] = n;
+        sendToHost({ type: 'setName', name: n });
+        saveBtn.textContent = 'Saved!';
+        setTimeout(() => { saveBtn.textContent = 'Save'; }, 1500);
+      };
+
+      nameRow.appendChild(nameInput);
+      nameRow.appendChild(saveBtn);
+      content.appendChild(nameRow);
     }
 
     const cancelBtn = document.createElement('button');
@@ -2247,8 +2318,29 @@ function renderJoinForm() {
   content.innerHTML = '';
 
   const desc = document.createElement('p');
-  desc.textContent = 'Enter the 6-character room code shared by the host.';
+  desc.textContent = 'Enter your name and the 6-character room code shared by the host.';
   content.appendChild(desc);
+
+  // Name row
+  const nameLabel = document.createElement('div');
+  nameLabel.style.cssText = 'font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:8px';
+  nameLabel.textContent = 'Your Name';
+  content.appendChild(nameLabel);
+
+  const nameInput = document.createElement('input');
+  nameInput.className = 'name-input';
+  nameInput.type = 'text';
+  nameInput.maxLength = 20;
+  nameInput.placeholder = 'Enter your name';
+  nameInput.autocomplete = 'off';
+  nameInput.value = NET.myName || '';
+  nameInput.style.cssText = 'display:block;width:100%;margin-bottom:12px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-family:inherit';
+  content.appendChild(nameInput);
+
+  const codeLabel = document.createElement('div');
+  codeLabel.style.cssText = 'font-size:12px;color:var(--muted);margin-bottom:4px';
+  codeLabel.textContent = 'Room Code';
+  content.appendChild(codeLabel);
 
   const inputRow = document.createElement('div');
   inputRow.style.cssText = 'display:flex;gap:8px;align-items:center';
@@ -2271,6 +2363,8 @@ function renderJoinForm() {
   connectBtn.onclick = () => {
     const code = codeInput.value.trim().toUpperCase();
     if (code.length !== 6) { statusEl.className='lobby-status err'; statusEl.textContent='Enter a 6-character code.'; return; }
+    const name = nameInput.value.trim() || 'Player';
+    NET.myName = name;
     statusEl.className='lobby-status'; statusEl.textContent='Connecting…';
     connectBtn.disabled = true;
     joinRoom(code, statusEl);
@@ -2288,7 +2382,7 @@ function renderJoinForm() {
   backBtn.onclick = () => renderLobby();
   content.appendChild(backBtn);
 
-  setTimeout(() => codeInput.focus(), 50);
+  setTimeout(() => nameInput.focus(), 50);
 }
 
 function renderReconnectPrompt(code) {
