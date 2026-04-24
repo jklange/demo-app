@@ -810,9 +810,12 @@ let NET = {
   connections: {},    // playerIdx → DataConnection (host only)
   hostConn: null,     // client only
   roomCode: '',
-  // 'human' = local human, 'ai' = AI, 'remote' = remote human
+  // 'human' = local human, 'ai' = AI, 'remote' = remote human, 'open' = waiting for human
   playerTypes: ['human', 'ai', 'ai', 'ai', 'ai', 'ai'],
   playerNames: ['You', 'P1', 'P2', 'P3', 'P4', 'P5'],
+  gameStarted: false,
+  dropTimers: {},     // seatIdx → timer (60s grace period after disconnect)
+  droppedNames: {},   // seatIdx → name of player who dropped
 };
 
 // Map logical player index to display position (0 = bottom / local human)
@@ -2006,6 +2009,12 @@ function handleHostMessage(data) {
       hideLobby();
       renderAll();
       log('Game started!', 'good');
+      // If reconnecting mid-game, show the appropriate action panel
+      if (G.phase === 'bid' && G.awaitingPlayer === NET.myIdx) {
+        showBidPanel();
+      } else if (G.phase === 'kitty' && G.bidWinner === NET.myIdx && G.awaitingPlayer === NET.myIdx) {
+        showKittyPanel();
+      }
       break;
     case 'playerJoined':
       renderLobby(); // refresh lobby UI with updated seat list
@@ -2114,6 +2123,10 @@ function renderLobby() {
       } else if (NET.playerTypes[i] === 'remote') {
         status.className = 'seat-status filled';
         status.textContent = NET.playerNames[i] || `Player ${i}`;
+      } else if (NET.droppedNames[i]) {
+        status.className = 'seat-status';
+        status.style.color = 'var(--teamB)';
+        status.textContent = `${NET.droppedNames[i]} — dropped (reconnecting…)`;
       } else {
         status.className = 'seat-status';
         status.textContent = 'AI';
@@ -2154,6 +2167,7 @@ function renderLobby() {
     cancelBtn.textContent = 'Cancel';
     cancelBtn.onclick = () => {
       if (NET.peer) NET.peer.destroy();
+      Object.values(NET.dropTimers).forEach(clearTimeout);
       NET.mode = 'local';
       NET.myIdx = 0;
       NET.connections = {};
@@ -2161,6 +2175,9 @@ function renderLobby() {
       NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
       NET.roomCode = '';
       NET.peer = null;
+      NET.gameStarted = false;
+      NET.dropTimers = {};
+      NET.droppedNames = {};
       hideLobby();
     };
 
@@ -2257,6 +2274,51 @@ function renderJoinForm() {
   setTimeout(() => codeInput.focus(), 50);
 }
 
+function renderReconnectPrompt(code) {
+  const content = document.getElementById('lobby-content');
+  const title = document.getElementById('lobby-title');
+  title.textContent = 'Disconnected';
+  content.innerHTML = '';
+
+  const msg = document.createElement('p');
+  msg.textContent = `You were dropped from the game. The host keeps your seat open for 60 seconds — reconnect now to resume.`;
+  content.appendChild(msg);
+
+  const statusEl = document.createElement('div');
+  statusEl.className = 'lobby-status';
+
+  const reconnectBtn = document.createElement('button');
+  reconnectBtn.className = 'btn btn-primary';
+  reconnectBtn.textContent = `Reconnect to ${code}`;
+  reconnectBtn.onclick = () => {
+    statusEl.className = 'lobby-status';
+    statusEl.textContent = 'Reconnecting…';
+    reconnectBtn.disabled = true;
+    joinRoom(code, statusEl);
+  };
+
+  content.appendChild(reconnectBtn);
+  content.appendChild(statusEl);
+
+  const joinOtherBtn = document.createElement('button');
+  joinOtherBtn.className = 'btn btn-muted';
+  joinOtherBtn.style.marginTop = '8px';
+  joinOtherBtn.textContent = 'Join Different Game';
+  joinOtherBtn.onclick = () => renderJoinForm();
+  content.appendChild(joinOtherBtn);
+
+  const offlineBtn = document.createElement('button');
+  offlineBtn.className = 'btn btn-muted';
+  offlineBtn.onclick = () => {
+    NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
+    NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    NET.roomCode = '';
+    hideLobby();
+  };
+  offlineBtn.textContent = 'Play Offline';
+  content.appendChild(offlineBtn);
+}
+
 function createRoom() {
   const code = randomCode();
   NET.roomCode = code;
@@ -2293,15 +2355,32 @@ function createRoom() {
       const seatIdx = Object.entries(NET.playerTypes).findIndex(([i, t]) => parseInt(i) > 0 && t === 'open');
       if (seatIdx < 0) { conn.close(); return; }
 
+      // Clear any grace-period timer for this seat
+      if (NET.dropTimers[seatIdx]) {
+        clearTimeout(NET.dropTimers[seatIdx]);
+        delete NET.dropTimers[seatIdx];
+        delete NET.droppedNames[seatIdx];
+      }
+
       NET.connections[seatIdx] = conn;
       NET.playerTypes[seatIdx] = 'remote';
 
       conn.send({ type: 'seat', idx: seatIdx });
-      // Send current game state to the new player
-      const state = JSON.parse(JSON.stringify(G));
-      conn.send({ type: 'state', G: state });
 
-      log(`Player ${seatIdx} (remote) joined.`, 'highlight');
+      if (NET.gameStarted) {
+        // Mid-game reconnect: send full game state so client can skip lobby and resume
+        conn.send({
+          type: 'gameStart',
+          playerTypes: [...NET.playerTypes],
+          playerNames: [...NET.playerNames],
+          G: JSON.parse(JSON.stringify(G)),
+        });
+        log(`Player ${seatIdx} reconnected mid-game.`, 'highlight');
+      } else {
+        conn.send({ type: 'state', G: JSON.parse(JSON.stringify(G)) });
+        log(`Player ${seatIdx} (remote) joined.`, 'highlight');
+      }
+
       renderLobby();
       renderPlayerAreas();
     });
@@ -2311,11 +2390,24 @@ function createRoom() {
     conn.on('close', () => {
       const idx = parseInt(Object.entries(NET.connections).find(([, v]) => v === conn)?.[0] ?? '-1');
       if (idx >= 0) {
-        NET.playerTypes[idx] = 'ai';
         delete NET.connections[idx];
-        log(`Player ${idx} disconnected. Seat taken by AI.`, 'bad');
+        const name = NET.playerNames[idx] || `Player ${idx}`;
+        NET.droppedNames[idx] = name;
+        NET.playerTypes[idx] = 'open'; // keep seat open for 60s grace period
+        log(`${name} disconnected. Seat ${idx} open for 60 seconds — share code ${NET.roomCode} to reconnect.`, 'bad');
         renderLobby();
         renderPlayerAreas();
+
+        NET.dropTimers[idx] = setTimeout(() => {
+          if (NET.playerTypes[idx] === 'open') {
+            NET.playerTypes[idx] = 'ai';
+            delete NET.droppedNames[idx];
+            delete NET.dropTimers[idx];
+            log(`Seat ${idx} reconnect window expired. AI takes over.`, 'bad');
+            renderLobby();
+            renderPlayerAreas();
+          }
+        }, 60000);
       }
     });
   });
@@ -2355,11 +2447,13 @@ function joinRoom(code, statusEl) {
 
     NET.hostConn.on('close', () => {
       if (NET.mode === 'client') {
-        alert('Disconnected from host.');
+        const savedCode = NET.roomCode;
         NET.mode = 'local';
         NET.myIdx = 0;
         NET.peer = null;
         NET.hostConn = null;
+        showLobby();
+        renderReconnectPrompt(savedCode);
       }
     });
   });
@@ -2374,6 +2468,7 @@ function hostStartGame() {
     if (i === 0) return 'human';
     return t === 'open' ? 'ai' : t;
   });
+  NET.gameStarted = true;
 
   // Start fresh game
   initGame();
