@@ -1247,7 +1247,7 @@ function advanceBid() {
         G.bidActed[G.currentBidder] = true;
         G.playerBids[G.currentBidder] = finalBid;
         const bidStr = finalBid.isMarks ? `${finalBid.amount} mark(s)` : finalBid.amount;
-        log(`Player ${G.currentBidder} bids ${bidStr} on ${TRUMP_NAMES[finalBid.trump]}.`, 'highlight');
+        log(`Player ${G.currentBidder} bids ${bidStr} in ${TRUMP_NAMES[finalBid.trump]}.`, 'highlight');
       }
       renderPlayerAreas();
       renderBidInfo();
@@ -1788,7 +1788,7 @@ function showBidPanel() {
   const hasHighMark = hb && hb.isMarks;
 
   document.getElementById('bid-panel-context').textContent =
-    hb ? `Current high bid: ${hb.isMarks ? hb.amount + ' mark(s)' : hb.amount} on ${TRUMP_NAMES[hb.trump]} by P${hb.player}` : 'No bid yet — opens at 60.';
+    hb ? `Current high bid: ${hb.isMarks ? hb.amount + ' mark(s)' : hb.amount} in ${TRUMP_NAMES[hb.trump]} by P${hb.player}` : 'No bid yet — opens at 60.';
 
   const statusSection = document.getElementById('bid-status-section');
   const statusList = document.getElementById('bid-status-list');
@@ -1809,7 +1809,7 @@ function showBidPanel() {
       if (bid === 'pass') {
         valEl.textContent = 'Pass';
       } else {
-        valEl.textContent = `${bid.isMarks ? bid.amount + ' mark(s)' : bid.amount} on ${TRUMP_NAMES[bid.trump]}`;
+        valEl.textContent = `${bid.isMarks ? bid.amount + ' mark(s)' : bid.amount} in ${TRUMP_NAMES[bid.trump]}`;
       }
       row.appendChild(nameEl);
       row.appendChild(valEl);
@@ -1869,7 +1869,7 @@ function showBidPanel() {
     G.highBid = { player: NET.myIdx, isMarks: false, amount, trump };
     G.bidActed[NET.myIdx] = true;
     G.playerBids[NET.myIdx] = { isMarks: false, amount, trump };
-    log(`You bid ${amount} on ${TRUMP_NAMES[trump]}.`, 'highlight');
+    log(`You bid ${amount} in ${TRUMP_NAMES[trump]}.`, 'highlight');
     hideBidPanel();
     renderPlayerAreas();
     broadcastState();
@@ -1898,7 +1898,7 @@ function showBidPanel() {
       G.highBid = { player: NET.myIdx, isMarks: true, amount: m, trump };
       G.bidActed[NET.myIdx] = true;
       G.playerBids[NET.myIdx] = { isMarks: true, amount: m, trump };
-      log(`You bid ${m} mark(s) on ${TRUMP_NAMES[trump]}.`, 'highlight');
+      log(`You bid ${m} mark(s) in ${TRUMP_NAMES[trump]}.`, 'highlight');
       hideBidPanel();
       renderPlayerAreas();
       broadcastState();
@@ -2017,7 +2017,7 @@ function showResultPanel(marksWon) {
   const bidStr = hb.isMarks ? `${hb.amount} mark(s)` : hb.amount;
   document.getElementById('result-title').textContent = 'Round Complete';
   document.getElementById('result-summary').textContent =
-    `P${hb.player} bid ${bidStr} on ${hb.trump === FOLLOW_ME ? 'Follow Me (no trump)' : TRUMP_NAMES[hb.trump]}`;
+    `P${hb.player} bid ${bidStr} in ${hb.trump === FOLLOW_ME ? 'Follow Me (no trump)' : TRUMP_NAMES[hb.trump]}`;
   const btn = document.getElementById('result-continue');
   if (NET.mode === 'client') {
     btn.textContent = 'Waiting for host…';
@@ -2135,7 +2135,7 @@ function handleClientMessage(conn, data) {
         G.bidActed[playerIdx] = true;
         G.playerBids[playerIdx] = bid;
         const bidStr = bid.isMarks ? `${bid.amount} mark(s)` : bid.amount;
-        log(`Player ${playerIdx} bids ${bidStr} on ${TRUMP_NAMES[bid.trump]}.`, 'highlight');
+        log(`Player ${playerIdx} bids ${bidStr} in ${TRUMP_NAMES[bid.trump]}.`, 'highlight');
       }
       G.awaitingPlayer = null;
       renderPlayerAreas();
