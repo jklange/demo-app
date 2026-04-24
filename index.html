@@ -1233,6 +1233,7 @@ function advanceBid() {
   }
 
   renderBidInfo();
+  renderPhaseDisplay();
 
   const bidder = G.currentBidder;
 
@@ -1332,6 +1333,7 @@ function advanceTrick() {
   const playerIdx = (G.trickLeader + played) % 6;
   renderTrickArea();
   highlightCurrentPlayer(playerIdx);
+  renderPhaseDisplay();
 
   if (playerIdx === NET.myIdx) {
     G.awaitingPlayer = NET.myIdx;
@@ -1471,6 +1473,21 @@ function endRound() {
 // ─────────────────────────────────────────────
 // RENDER
 // ─────────────────────────────────────────────
+function renderPhaseDisplay() {
+  const phaseLabel = G.phase.charAt(0).toUpperCase() + G.phase.slice(1);
+  let suffix = '';
+  if (G.phase === 'bid' && G.currentBidder != null) {
+    const p = G.currentBidder;
+    const possessive = p === NET.myIdx ? 'Your' : `${NET.playerNames[p] || `P${p}`}'s`;
+    suffix = ` - ${possessive} Turn`;
+  } else if (G.phase === 'play' && !G.trickInProgress && G.currentTrick.length < 6) {
+    const p = (G.trickLeader + G.currentTrick.length) % 6;
+    const possessive = p === NET.myIdx ? 'Your' : `${NET.playerNames[p] || `P${p}`}'s`;
+    suffix = ` - ${possessive} Turn`;
+  }
+  document.getElementById('phase-display').textContent = phaseLabel + suffix;
+}
+
 function renderAll() {
   renderScoreBar();
   renderPlayerAreas();
@@ -1479,18 +1496,7 @@ function renderAll() {
   renderScorePanel();
   renderBidInfo();
   renderTricksWon();
-  {
-    const phaseLabel = G.phase.charAt(0).toUpperCase() + G.phase.slice(1);
-    let activePlayerLabel = '';
-    if (G.phase === 'bid' && G.currentBidder != null) {
-      const name = G.currentBidder === NET.myIdx ? 'You' : (NET.playerNames[G.currentBidder] || `P${G.currentBidder}`);
-      activePlayerLabel = ` — ${name}`;
-    } else if (G.phase === 'play' && G.awaitingPlayer != null) {
-      const name = G.awaitingPlayer === NET.myIdx ? 'You' : (NET.playerNames[G.awaitingPlayer] || `P${G.awaitingPlayer}`);
-      activePlayerLabel = ` — ${name}`;
-    }
-    document.getElementById('phase-display').textContent = phaseLabel + activePlayerLabel;
-  }
+  renderPhaseDisplay();
   document.getElementById('round-info').textContent = `Round ${G.roundNum} · ${G.phase}`;
 }
 
