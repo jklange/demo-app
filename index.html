@@ -289,6 +289,11 @@
     }
     .domino.dimmed { opacity: 0.45; }
     .domino.trump-marker { border-color: #ff9800; }
+    .domino.kitty-size { width: 36px; height: 68px; border-radius: 5px; border-width: 2px; }
+    .domino.kitty-size .pip-grid { width: 24px; height: 24px; }
+    .domino.kitty-size .pip { width: 5px; height: 5px; }
+    .domino.kitty-size .divider { height: 1px; margin: 0 4px; }
+    #kitty-in-phase { display: flex; gap: 6px; }
 
     /* ── HUMAN HAND ── */
     #human-hint { font-size: 32px; }
@@ -735,6 +740,7 @@
       <div class="trump-pip"></div>
       <span id="trump-name">—</span>
     </div>
+    <div id="kitty-in-phase" style="display:none"></div>
     <h3>Score</h3>
     <div id="trick-score">
       Team A: <span id="scoreA-pts">0</span> pts<br>
@@ -1656,6 +1662,19 @@ function renderBidInfo() {
     }
   } else {
     trumpDisp.style.display = 'none';
+  }
+
+  const kittyInPhase = document.getElementById('kitty-in-phase');
+  if (G.phase === 'play' && G.kitty && G.kitty.length > 0) {
+    kittyInPhase.innerHTML = '';
+    G.kitty.forEach(d => {
+      const el = buildDomino(d, false, false, false);
+      el.classList.add('kitty-size');
+      kittyInPhase.appendChild(el);
+    });
+    kittyInPhase.style.display = 'flex';
+  } else {
+    kittyInPhase.style.display = 'none';
   }
 }
 
