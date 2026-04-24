@@ -1350,6 +1350,7 @@ function endRound() {
   G.teamScores[1] += marksWon[1];
   G.bidStartIdx = (G.bidStartIdx + 1) % 6;
 
+  G.lastMarksWon = marksWon;
   renderScoreBar();
   broadcastState();
   showResultPanel(marksWon);
@@ -1840,6 +1841,14 @@ function showResultPanel(marksWon) {
   document.getElementById('result-title').textContent = 'Round Complete';
   document.getElementById('result-summary').textContent =
     `P${hb.player} bid ${bidStr} on ${TRUMP_NAMES[hb.trump]}`;
+  const btn = document.getElementById('result-continue');
+  if (NET.mode === 'client') {
+    btn.textContent = 'Waiting for host…';
+    btn.disabled = true;
+  } else {
+    btn.textContent = 'Next Round';
+    btn.disabled = false;
+  }
 
   const table = document.getElementById('result-table');
   table.innerHTML = `
@@ -1995,10 +2004,18 @@ function handleHostMessage(data) {
       G = data.G;
       renderAll();
       // Show UI prompts if it's this client's turn
-      if (G.phase === 'bid' && G.awaitingPlayer === NET.myIdx) {
-        showBidPanel();
-      } else if (G.phase === 'kitty' && G.bidWinner === NET.myIdx && G.awaitingPlayer === NET.myIdx) {
-        showKittyPanel();
+      if (G.phase === 'score') {
+        showResultPanel(G.lastMarksWon || [0, 0]);
+        if (G.teamScores[0] >= 7 || G.teamScores[1] >= 7) {
+          setTimeout(() => { hideResultPanel(); showGameOver(); }, 200);
+        }
+      } else {
+        hideResultPanel();
+        if (G.phase === 'bid' && G.awaitingPlayer === NET.myIdx) {
+          showBidPanel();
+        } else if (G.phase === 'kitty' && G.bidWinner === NET.myIdx && G.awaitingPlayer === NET.myIdx) {
+          showKittyPanel();
+        }
       }
       // play turn is handled by renderHumanHand showing highlighted tiles
       break;
@@ -2518,6 +2535,7 @@ document.getElementById('kitty-confirm').addEventListener('click', () => {
 });
 
 document.getElementById('result-continue').addEventListener('click', () => {
+  if (NET.mode === 'client') return;
   hideResultPanel();
   if (G.teamScores[0] < 7 && G.teamScores[1] < 7) {
     startRound();
