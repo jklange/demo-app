@@ -1338,7 +1338,7 @@ function sortHandByNumber(hand, n) {
     return 3;
   }
   function rank(d, g) {
-    if (g === 0) return d.h === n && d.l === n ? n : (d.h === n ? d.l : d.h);
+    if (g === 0) return d.h === n && d.l === n ? 7 : (d.h === n ? d.l : d.h);
     if (g === 1) return d.h;
     return d.h + d.l;
   }
