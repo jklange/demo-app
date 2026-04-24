@@ -946,6 +946,7 @@ function initGame() {
     teamTrickPts: [0, 0],
     awaitingPlayer: null,  // logical player index who should act, or null
     trickInProgress: false,
+    handSortPip: null,  // null = default sort, number = sorted by that pip
   };
   startRound();
 }
@@ -1351,6 +1352,7 @@ function startPlay() {
   G.trickLeader = G.bidWinner;
   G.currentTrick = [];
   for (let i = 0; i < 6; i++) sortHand(G.hands[i], G.trump);
+  G.handSortPip = null;
   renderAll();
   advanceTrick();
 }
@@ -1689,13 +1691,37 @@ function renderTrickArea() {
   });
 }
 
+function handGroupKey(d) {
+  const n = G.handSortPip;
+  if (n !== null) {
+    if (d.h === n || d.l === n) return 0;
+    if (d.h === d.l) return 1;
+    if (dominoPoints(d) > 0) return 2;
+    return 3;
+  }
+  if (G.trump !== null && isTrump(d, G.trump)) return 0;
+  if (d.h === d.l) return 1;
+  if (dominoPoints(d) > 0) return 2;
+  return 3;
+}
+
 function renderHumanHand() {
   const container = document.getElementById('human-hand');
   container.innerHTML = '';
   const myHand = G.hands[NET.myIdx];
   const isMyTurn = G.awaitingPlayer === NET.myIdx;
 
+  let prevGroup = null;
   myHand.forEach(d => {
+    const g = handGroupKey(d);
+    if (prevGroup !== null && g !== prevGroup) {
+      const spacer = document.createElement('div');
+      spacer.style.width = '8px';
+      spacer.style.flexShrink = '0';
+      container.appendChild(spacer);
+    }
+    prevGroup = g;
+
     const isLegal = isMyTurn && canPlay(d, G.currentTrick, myHand, G.trump);
     const isDimmed = isMyTurn && !isLegal;
     const isTrumpD = G.trump !== null && isTrump(d, G.trump);
@@ -1723,6 +1749,7 @@ function renderHumanHand() {
         half.addEventListener('click', (e) => {
           e.stopPropagation();
           sortHandByNumber(G.hands[NET.myIdx], val);
+          G.handSortPip = val;
           renderHumanHand();
         });
       });
@@ -1975,7 +2002,17 @@ function renderBidPanelHand() {
   const container = document.getElementById('bid-panel-hand');
   if (!container) return;
   container.innerHTML = '';
+  let prevGroup = null;
   G.hands[NET.myIdx].forEach(d => {
+    const g = handGroupKey(d);
+    if (prevGroup !== null && g !== prevGroup) {
+      const spacer = document.createElement('div');
+      spacer.style.width = '8px';
+      spacer.style.flexShrink = '0';
+      container.appendChild(spacer);
+    }
+    prevGroup = g;
+
     const el = buildDomino(d, false, false, false);
     el.classList.add('kitty-size');
     const halves = el.querySelectorAll('.half');
@@ -1983,6 +2020,7 @@ function renderBidPanelHand() {
       half.addEventListener('click', (e) => {
         e.stopPropagation();
         sortHandByNumber(G.hands[NET.myIdx], val);
+        G.handSortPip = val;
         renderBidPanelHand();
         renderHumanHand();
       });
