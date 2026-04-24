@@ -89,6 +89,8 @@
     }
     .tricks-col-header.teamA { color: var(--teamA); }
     .tricks-col-header.teamB { color: var(--teamB); }
+    .trick-lead-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f5c800; margin-left: 7px; vertical-align: middle; visibility: hidden; }
+    .trick-lead-dot.active { visibility: visible; }
     .trick-count { display: block; font-size: 16px; font-weight: 400; color: var(--muted); margin-top: 1px; }
     .tricks-rows {
       flex: 1;
@@ -710,13 +712,13 @@
 <div id="main">
   <!-- TEAM A TRICKS -->
   <div class="tricks-col" id="tricks-col-a">
-    <div class="tricks-col-header teamA">Team A<span class="trick-count" id="tricks-a-count"></span></div>
+    <div class="tricks-col-header teamA">Team A<span class="trick-lead-dot" id="trick-lead-dot-a"></span><span class="trick-count" id="tricks-a-count"></span></div>
     <div class="tricks-rows" id="trick-rows-a"></div>
   </div>
 
   <!-- TEAM B TRICKS -->
   <div class="tricks-col" id="tricks-col-b">
-    <div class="tricks-col-header teamB">Team B<span class="trick-count" id="tricks-b-count"></span></div>
+    <div class="tricks-col-header teamB">Team B<span class="trick-lead-dot" id="trick-lead-dot-b"></span><span class="trick-count" id="tricks-b-count"></span></div>
     <div class="tricks-rows" id="trick-rows-b"></div>
   </div>
 
@@ -1549,6 +1551,15 @@ function renderAll() {
 }
 
 function renderTricksWon() {
+  // Determine which team is currently winning the in-progress trick
+  let trickLeadingTeam = -1;
+  if (G.phase === 'play' && G.currentTrick.length > 0) {
+    const winIdx = trickWinner(G.currentTrick, G.trump);
+    trickLeadingTeam = TEAM[G.currentTrick[winIdx].player];
+  }
+  document.getElementById('trick-lead-dot-a').classList.toggle('active', trickLeadingTeam === 0);
+  document.getElementById('trick-lead-dot-b').classList.toggle('active', trickLeadingTeam === 1);
+
   [0, 1].forEach(teamIdx => {
     const letter = teamIdx === 0 ? 'a' : 'b';
     const rowsEl = document.getElementById(`trick-rows-${letter}`);
