@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Eighty Eight — Texas Dominoes</title>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -56,7 +57,7 @@
     .mark { width: 14px; height: 14px; border-radius: 50%; }
     .mark.filled { background: var(--gold); }
     .mark.empty { background: var(--border); border: 1px solid var(--muted); }
-    #round-info { color: var(--muted); font-size: 12px; text-align: center; }
+    #round-info { color: var(--muted); font-size: 12px; text-align: center; flex: 1; }
 
     /* ── MAIN LAYOUT ── */
     #main {
@@ -526,6 +527,91 @@
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── LOBBY ── */
+    #lobby-panel { max-width: 480px; width: 100%; }
+    .lobby-mode-btns { display: flex; gap: 10px; }
+    .seat-list { display: flex; flex-direction: column; gap: 6px; }
+    .seat-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+    }
+    .seat-row.mine { border-color: var(--teamA); }
+    .seat-num { font-weight: 700; width: 50px; flex-shrink: 0; }
+    .seat-num.teamA { color: var(--teamA); }
+    .seat-num.teamB { color: var(--teamB); }
+    .seat-status { flex: 1; color: var(--muted); }
+    .seat-status.filled { color: var(--text); }
+    .seat-status.you { color: var(--gold); font-weight: 600; }
+    .seat-toggle {
+      padding: 3px 10px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .seat-toggle:hover { border-color: var(--muted); color: var(--text); }
+    .seat-toggle.open { border-color: var(--teamA); color: var(--teamA); }
+    .room-code-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .room-code-val {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--gold);
+      font-family: monospace;
+      flex: 1;
+    }
+    .lobby-status {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      padding: 8px;
+    }
+    .lobby-status.ok { color: #6ee7a0; }
+    .lobby-status.err { color: var(--teamB); }
+    .text-input {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 16px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-family: monospace;
+    }
+    .text-input:focus { outline: none; border-color: var(--teamA); }
+    .waiting-indicator {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 6px 0;
+    }
+    .remote-indicator {
+      font-size: 9px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: rgba(74,158,255,0.2);
+      color: var(--teamA);
+      border: 1px solid rgba(74,158,255,0.4);
+      margin-left: 4px;
+    }
   </style>
 </head>
 <body>
@@ -534,15 +620,16 @@
 <div id="scorebar">
   <div class="team">
     <span class="team-label teamA-label">Team A</span>
-    <span style="font-size:11px;color:var(--muted)">(You, P2, P4)</span>
+    <span style="font-size:11px;color:var(--muted)" id="team-a-players">(You, P2, P4)</span>
     <div class="marks" id="marksA"></div>
   </div>
   <div id="round-info">Round 1 · Deal</div>
   <div class="team">
     <div class="marks" id="marksB"></div>
-    <span style="font-size:11px;color:var(--muted)">(P1, P3, P5)</span>
+    <span style="font-size:11px;color:var(--muted)" id="team-b-players">(P1, P3, P5)</span>
     <span class="team-label teamB-label">Team B</span>
   </div>
+  <button class="btn btn-muted" id="multiplayer-btn" style="font-size:11px;padding:4px 10px;margin-left:12px;flex-shrink:0">Multiplayer</button>
 </div>
 
 <!-- MAIN -->
@@ -561,7 +648,7 @@
 
   <!-- TABLE -->
   <div id="table">
-    <!-- AI player areas positioned by JS -->
+    <!-- player areas positioned by JS -->
     <div id="trick-area"></div>
     <div id="human-hand-area">
       <div id="human-bid-badge" class="bid-badge" style="display:none"></div>
@@ -661,6 +748,14 @@
   </div>
 </div>
 
+<!-- LOBBY OVERLAY -->
+<div class="overlay hidden" id="lobby-overlay">
+  <div class="panel" id="lobby-panel">
+    <h2 id="lobby-title">Multiplayer</h2>
+    <div id="lobby-content"></div>
+  </div>
+</div>
+
 <div id="tooltip"></div>
 
 <script>
@@ -684,26 +779,46 @@ const PIP_LAYOUTS = {
   6: [1,0,1, 1,0,1, 1,0,1],
 };
 
-// player seat positions (top%, left%, for the label anchor)
-// 0=bottom-center(human), 1=bottom-left, 2=mid-left, 3=top-left, 4=top-right, 5=mid-right
+// Visual seat positions indexed by display position (0 = bottom / human).
+// dispIdx() maps logical player → display position so the local human is always at 0.
 const SEAT_POSITIONS = [
-  null,                          // 0: human (handled separately)
-  { top:'72%', left:'12%' },    // 1
-  { top:'38%', left:'4%'  },    // 2
-  { top:'8%',  left:'18%' },    // 3
-  { top:'8%',  right:'18%'},    // 4
-  { top:'38%', right:'4%' },    // 5
+  null,                           // 0: human (bottom, handled separately)
+  { top:'72%', left:'12%' },     // 1: bottom-left
+  { top:'38%', left:'4%'  },     // 2: mid-left
+  { top:'8%',  left:'18%' },     // 3: top-left
+  { top:'8%',  right:'18%'},     // 4: top-right
+  { top:'38%', right:'4%' },     // 5: mid-right
 ];
 
-// Absolute position on #table + rotation so domino top faces center
+// Domino positions on #table for played trick, indexed by display position
 const TRICK_SLOT_POSITIONS = [
-  { top:'72%', left:'50%', rotate:   0 }, // P0: bottom-center, points up
-  { top:'68%', left:'22%', rotate: -30 }, // P1: bottom-left, angled toward center
-  { top:'42%', left:'16%', rotate: -90 }, // P2: left, points right
-  { top:'18%', left:'30%', rotate: 150 }, // P3: top-left, points down-right
-  { top:'18%', left:'70%', rotate:-150 }, // P4: top-right, points down-left
-  { top:'42%', left:'84%', rotate:  90 }, // P5: right, points left
+  { top:'72%', left:'50%', rotate:   0 },
+  { top:'68%', left:'22%', rotate: -30 },
+  { top:'42%', left:'16%', rotate: -90 },
+  { top:'18%', left:'30%', rotate: 150 },
+  { top:'18%', left:'70%', rotate:-150 },
+  { top:'42%', left:'84%', rotate:  90 },
 ];
+
+// ─────────────────────────────────────────────
+// NETWORK STATE
+// ─────────────────────────────────────────────
+let NET = {
+  mode: 'local',      // 'local' | 'host' | 'client'
+  myIdx: 0,           // logical player index for this browser
+  peer: null,
+  connections: {},    // playerIdx → DataConnection (host only)
+  hostConn: null,     // client only
+  roomCode: '',
+  // 'human' = local human, 'ai' = AI, 'remote' = remote human
+  playerTypes: ['human', 'ai', 'ai', 'ai', 'ai', 'ai'],
+  playerNames: ['You', 'P1', 'P2', 'P3', 'P4', 'P5'],
+};
+
+// Map logical player index to display position (0 = bottom / local human)
+function dispIdx(logicalIdx) {
+  return (logicalIdx - NET.myIdx + 6) % 6;
+}
 
 // ─────────────────────────────────────────────
 // GAME STATE
@@ -721,15 +836,15 @@ function initGame() {
     currentBidder: 0,
     highBid: null,
     bidPassed: [false, false, false, false, false, false],
-    kittySwapPending: [],   // kitty dominoes selected for swap
-    handSwapPending: [],    // hand dominoes selected for discard
+    kittySwapPending: [],
+    handSwapPending: [],
     trump: null,
     bidWinner: 0,
     trickLeader: 0,
     currentTrick: [],
     completedTricks: [],
     teamTrickPts: [0, 0],
-    awaitingHuman: false,
+    awaitingPlayer: null,  // logical player index who should act, or null
     trickInProgress: false,
   };
   startRound();
@@ -773,19 +888,18 @@ function isTrump(d, trump) {
 }
 
 function getSuit(d, trump) {
-  // suit = higher non-trump pip; null if trump domino
   if (isTrump(d, trump)) return null;
-  return d.h; // h >= l always, and it's not trump, so h is the suit
+  return d.h;
 }
 
 function trumpRank(d, trump) {
-  if (d.h === trump && d.l === trump) return 20; // double
-  return d.h === trump ? d.l : d.h; // the other pip
+  if (d.h === trump && d.l === trump) return 20;
+  return d.h === trump ? d.l : d.h;
 }
 
 function suitRank(d, suit) {
-  if (d.h === d.l) return 20; // double is always highest in its suit
-  return d.h === suit ? d.l : d.h; // the pip that is not the suit pip
+  if (d.h === d.l) return 20;
+  return d.h === suit ? d.l : d.h;
 }
 
 function dominoPoints(d) {
@@ -800,15 +914,13 @@ function canPlay(d, trick, hand, trump) {
   const ledSuit = ledIsTrump ? null : led.h;
 
   if (ledIsTrump) {
-    // must follow trump if possible
     const hasTrump = hand.some(x => isTrump(x, trump));
     if (hasTrump) return isTrump(d, trump);
-    return true; // void in trump
+    return true;
   } else {
-    // must follow suit: any non-trump domino bearing the suit pip (either side) counts
     const hasSuit = hand.some(x => !isTrump(x, trump) && (x.h === ledSuit || x.l === ledSuit));
     if (hasSuit) return !isTrump(d, trump) && (d.h === ledSuit || d.l === ledSuit);
-    return true; // void in suit — play anything
+    return true;
   }
 }
 
@@ -827,7 +939,6 @@ function trickWinner(trick, trump) {
     } else if (!ledIsTrump && (domino.h === ledSuit || domino.l === ledSuit)) {
       score = 50 + suitRank(domino, ledSuit);
     }
-    // first played wins ties (score stays -1 overrides nothing)
     if (i === 0) {
       bestScore = score < 0 ? 0 : score;
       bestIdx = 0;
@@ -855,7 +966,6 @@ function aiChooseBid(playerIdx) {
   const hand = G.hands[playerIdx];
   const highBid = G.highBid;
 
-  // count trumps and count-dominoes per suit
   let bestSuit = 0, bestCount = 0;
   for (let t = 0; t <= 6; t++) {
     const cnt = hand.filter(d => isTrump(d, t)).length;
@@ -863,35 +973,31 @@ function aiChooseBid(playerIdx) {
   }
 
   const countPts = hand.reduce((s, d) => s + dominoPoints(d), 0);
-  const strength = bestCount * 8 + countPts; // rough hand strength
+  const strength = bestCount * 8 + countPts;
 
-  // decide whether to bid
   if (highBid && highBid.isMarks) {
-    // can only bid one higher mark, up to 7
     const nextMark = highBid.amount + 1;
     if (nextMark <= 7 && bestCount >= 7 && countPts >= 20) {
       return { isMarks: true, amount: nextMark, trump: bestSuit };
     }
-    return null; // pass
+    return null;
   }
 
   const minBid = highBid ? highBid.amount + 1 : 60;
   if (minBid > 87) {
-    // must go marks (1 or 2 since no marks bid yet)
     if (bestCount >= 7) {
       return { isMarks: true, amount: 1, trump: bestSuit };
     }
     return null;
   }
 
-  // numeric bid based on strength
   let bidAmount = 60;
   if (strength >= 60) bidAmount = 84;
   else if (strength >= 50) bidAmount = 78;
   else if (strength >= 40) bidAmount = 72;
   else if (strength >= 30) bidAmount = 66;
 
-  if (bidAmount < minBid) return null; // can't beat current bid
+  if (bidAmount < minBid) return null;
   return { isMarks: false, amount: bidAmount, trump: bestSuit };
 }
 
@@ -906,12 +1012,10 @@ function legalPlays(playerIdx) {
 function aiLeadDomino(playerIdx) {
   const hand = G.hands[playerIdx];
   const legal = legalPlays(playerIdx);
-  // lead highest trump first, else highest suit
   const trumps = legal.filter(d => isTrump(d, G.trump)).sort((a, b) => trumpRank(b, G.trump) - trumpRank(a, G.trump));
   if (trumps.length > 0 && trumps.length >= hand.filter(d => isTrump(d, G.trump)).length * 0.5) {
     return trumps[0];
   }
-  // lead best count domino
   const sorted = [...legal].sort((a, b) => (dominoPoints(b) - dominoPoints(a)) || (b.h - a.h));
   return sorted[0];
 }
@@ -921,7 +1025,6 @@ function aiFollowDomino(playerIdx) {
   const myTeam = TEAM[playerIdx];
   const trick = G.currentTrick;
 
-  // check if partner is currently winning
   let partnerWinning = false;
   if (trick.length > 0) {
     const winnerIdx = trickWinner(trick, G.trump);
@@ -930,12 +1033,10 @@ function aiFollowDomino(playerIdx) {
   }
 
   if (partnerWinning) {
-    // dump lowest value (avoid wasting points)
     const sorted = [...legal].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h));
     return sorted[0];
   }
 
-  // try to win: prefer cheapest winning domino
   const winning = legal.filter(d => {
     const hypo = [...trick, { player: playerIdx, domino: d }];
     const w = trickWinner(hypo, G.trump);
@@ -945,7 +1046,6 @@ function aiFollowDomino(playerIdx) {
     const sorted = winning.sort((a, b) => dominoPoints(a) - dominoPoints(b));
     return sorted[0];
   }
-  // can't win, dump lowest
   const sorted = [...legal].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h));
   return sorted[0];
 }
@@ -955,10 +1055,8 @@ function aiKittyChoice(playerIdx) {
   const kitty = [...G.kitty];
   const trump = G.trump;
 
-  // pull any trumps from kitty into hand
   kitty.forEach((k, ki) => {
     if (isTrump(k, trump)) {
-      // find weakest non-trump to swap out
       const nonTrumps = hand.filter(d => !isTrump(d, trump)).sort((a, b) => dominoPoints(a) - dominoPoints(b));
       if (nonTrumps.length > 0) {
         const idx = hand.indexOf(nonTrumps[0]);
@@ -968,9 +1066,8 @@ function aiKittyChoice(playerIdx) {
     }
   });
 
-  // pull count dominoes from kitty
   kitty.forEach((k, ki) => {
-    if (dominoPoints(k) > 0 && dominoPoints(G.kitty[ki]) === 0) return; // already swapped
+    if (dominoPoints(k) > 0 && dominoPoints(G.kitty[ki]) === 0) return;
     if (dominoPoints(G.kitty[ki]) > 0) {
       const nonCounts = hand.filter(d => !isTrump(d, trump) && dominoPoints(d) === 0).sort((a, b) => a.h - b.h);
       if (nonCounts.length > 0) {
@@ -1001,7 +1098,7 @@ function startRound() {
   G.currentTrick = [];
   G.completedTricks = [];
   G.teamTrickPts = [0, 0];
-  G.awaitingHuman = false;
+  G.awaitingPlayer = null;
   G.trickInProgress = false;
 
   deal();
@@ -1013,19 +1110,15 @@ function startRound() {
 }
 
 function advanceBid() {
-  // Skip players who have already had their turn
   if (G.bidActed[G.currentBidder]) {
     nextBidder();
     return;
   }
 
-  // All players have acted — end bidding (or force bid-start if nobody bid)
   if (G.bidActed.every(a => a)) {
     if (!G.highBid) {
-      // Everyone passed; bid-start must bid at least 60
       G.bidActed[G.bidStartIdx] = false;
       G.currentBidder = G.bidStartIdx;
-      // fall through to show bid or AI bid below
     } else {
       finishBidding();
       return;
@@ -1034,10 +1127,17 @@ function advanceBid() {
 
   renderBidInfo();
 
-  if (G.currentBidder === 0) {
+  const bidder = G.currentBidder;
+
+  if (bidder === NET.myIdx) {
+    G.awaitingPlayer = bidder;
     showBidPanel();
+  } else if (NET.playerTypes[bidder] === 'remote') {
+    // Remote human — set awaiting and broadcast so their client shows the bid UI
+    G.awaitingPlayer = bidder;
+    broadcastState();
   } else {
-    // AI bids
+    // AI bids (host runs this; clients never reach here)
     setTimeout(() => {
       const mustBid = !G.highBid && G.currentBidder === G.bidStartIdx;
       const bid = aiChooseBid(G.currentBidder);
@@ -1056,6 +1156,7 @@ function advanceBid() {
       }
       renderPlayerAreas();
       renderBidInfo();
+      broadcastState();
       checkBidEnd();
     }, aiDelay());
   }
@@ -1077,7 +1178,6 @@ function nextBidder() {
 function finishBidding() {
   hideBidPanel();
   if (!G.highBid) {
-    // fallback: bid-start must bid 60
     G.highBid = { player: G.bidStartIdx, isMarks: false, amount: 60, trump: 0 };
   }
   G.bidWinner = G.highBid.player;
@@ -1086,12 +1186,17 @@ function finishBidding() {
   log(`Bidding over. Player ${G.bidWinner} wins at ${bidStr} on ${TRUMP_NAMES[G.trump]}.`, 'good');
   G.phase = 'kitty';
 
-  if (G.bidWinner === 0) {
+  if (G.bidWinner === NET.myIdx) {
+    broadcastState();
     showKittyPanel();
+  } else if (NET.playerTypes[G.bidWinner] === 'remote') {
+    G.awaitingPlayer = G.bidWinner;
+    broadcastState(); // client sees phase='kitty' and awaitingPlayer===myIdx → shows kitty panel
   } else {
     setTimeout(() => {
       aiKittyChoice(G.bidWinner);
       log(`Player ${G.bidWinner} takes kitty and leads.`);
+      broadcastState();
       startPlay();
     }, aiDelay());
   }
@@ -1110,24 +1215,26 @@ function startPlay() {
 function advanceTrick() {
   if (G.trickInProgress) return;
 
-  // whose turn?
   const played = G.currentTrick.length;
   if (played === 6) {
-    // trick complete
     resolveTrick();
     return;
   }
 
   const playerIdx = (G.trickLeader + played) % 6;
   renderTrickArea();
-  renderHumanHand();
   highlightCurrentPlayer(playerIdx);
 
-  if (playerIdx === 0) {
-    G.awaitingHuman = true;
+  if (playerIdx === NET.myIdx) {
+    G.awaitingPlayer = NET.myIdx;
     renderHumanHand();
+  } else if (NET.playerTypes[playerIdx] === 'remote') {
+    G.awaitingPlayer = playerIdx;
+    renderHumanHand();
+    broadcastState();
   } else {
-    G.awaitingHuman = false;
+    G.awaitingPlayer = null;
+    renderHumanHand();
     setTimeout(() => {
       const d = G.currentTrick.length === 0 ? aiLeadDomino(playerIdx) : aiFollowDomino(playerIdx);
       playDomino(playerIdx, d);
@@ -1139,14 +1246,16 @@ function playDomino(playerIdx, domino) {
   G.hands[playerIdx] = G.hands[playerIdx].filter(d => dominoId(d) !== dominoId(domino));
   G.currentTrick.push({ player: playerIdx, domino });
   log(`Player ${playerIdx} plays ${domino.h}-${domino.l}.`);
-  G.awaitingHuman = false;
+  G.awaitingPlayer = null;
   renderTrickArea();
   renderHumanHand();
   renderPlayerAreas();
   if (G.currentTrick.length === 6) {
     G.trickInProgress = true;
+    broadcastState();
     setTimeout(resolveTrick, TRICK_PAUSE);
   } else {
+    broadcastState();
     advanceTrick();
   }
 }
@@ -1156,7 +1265,7 @@ function resolveTrick() {
   const winIdx = trickWinner(trick, G.trump);
   const winner = trick[winIdx].player;
   const winTeam = TEAM[winner];
-  const pts = 2 + trickPoints(trick); // 2 for trick + count dominoes
+  const pts = 2 + trickPoints(trick);
   G.teamTrickPts[winTeam] += pts;
 
   G.completedTricks.push({ winner, plays: [...trick], pts });
@@ -1169,6 +1278,7 @@ function resolveTrick() {
   renderTrickArea();
   renderScorePanel();
   renderTricksWon();
+  broadcastState();
 
   if (G.completedTricks.length === 9) {
     setTimeout(endRound, 600);
@@ -1189,7 +1299,6 @@ function checkEarlyEnd() {
   const remaining = 88 - distributed;
 
   if (hb.isMarks) {
-    // mark bid requires winning ALL tricks — any trick lost seals the failure
     if (G.completedTricks.some(t => TEAM[t.winner] !== bidTeam)) {
       log(`Mark bid is lost — ending round early.`, 'bad');
       return true;
@@ -1239,6 +1348,7 @@ function endRound() {
   G.bidStartIdx = (G.bidStartIdx + 1) % 6;
 
   renderScoreBar();
+  broadcastState();
   showResultPanel(marksWon);
 
   if (G.teamScores[0] >= 7 || G.teamScores[1] >= 7) {
@@ -1276,7 +1386,6 @@ function renderTricksWon() {
       ? `${teamTricks.length} trick${teamTricks.length > 1 ? 's' : ''} · ${G.teamTrickPts[teamIdx]} pts`
       : '';
 
-    // newest on top: render in reverse chronological order
     [...teamTricks].reverse().forEach(({ plays, pts }) => {
       const row = document.createElement('div');
       row.className = 'trick-row';
@@ -1309,15 +1418,26 @@ function renderScoreBar() {
   document.getElementById('marksA').innerHTML = renderMarks(0);
   document.getElementById('marksB').innerHTML = renderMarks(1);
   document.getElementById('round-info').textContent = `Round ${G.roundNum} · ${G.phase}`;
+
+  // Update team labels to show which players are on each team
+  const teamAPlayers = [0,1,2,3,4,5].filter(p => TEAM[p] === 0)
+    .map(p => p === NET.myIdx ? 'You' : NET.playerNames[p] || `P${p}`);
+  const teamBPlayers = [0,1,2,3,4,5].filter(p => TEAM[p] === 1)
+    .map(p => p === NET.myIdx ? 'You' : NET.playerNames[p] || `P${p}`);
+  document.getElementById('team-a-players').textContent = `(${teamAPlayers.join(', ')})`;
+  document.getElementById('team-b-players').textContent = `(${teamBPlayers.join(', ')})`;
 }
 
 function renderPlayerAreas() {
   const table = document.getElementById('table');
-  // remove old player areas
   table.querySelectorAll('.player-area').forEach(el => el.remove());
 
-  for (let p = 1; p <= 5; p++) {
-    const pos = SEAT_POSITIONS[p];
+  // Render all players except NET.myIdx (shown at bottom via human-hand-area)
+  for (let p = 0; p <= 5; p++) {
+    const dIdx = dispIdx(p);
+    if (dIdx === 0) continue; // local human, shown at bottom
+
+    const pos = SEAT_POSITIONS[dIdx];
     const area = document.createElement('div');
     area.className = 'player-area';
     area.id = `player-area-${p}`;
@@ -1331,7 +1451,14 @@ function renderPlayerAreas() {
 
     const label = document.createElement('div');
     label.className = `player-label ${teamClass}${isActive ? ' active' : ''}`;
-    label.textContent = `P${p}`;
+    const pName = NET.playerNames[p] || `P${p}`;
+    label.textContent = pName;
+    if (NET.playerTypes[p] === 'remote') {
+      const badge = document.createElement('span');
+      badge.className = 'remote-indicator';
+      badge.textContent = 'online';
+      label.appendChild(badge);
+    }
     area.appendChild(label);
 
     const count = document.createElement('div');
@@ -1357,7 +1484,6 @@ function renderPlayerAreas() {
       }
     }
 
-    // face-down tiles
     const pile = document.createElement('div');
     pile.className = 'hand-pile';
     for (let i = 0; i < G.hands[p].length; i++) {
@@ -1370,15 +1496,14 @@ function renderPlayerAreas() {
     table.appendChild(area);
   }
 
-  // player 0 label above hand
+  // Local human hint + bid badge
   document.getElementById('human-hint').textContent =
-    G.awaitingHuman ? 'Your turn — click a highlighted domino' :
+    G.awaitingPlayer === NET.myIdx ? 'Your turn — click a highlighted domino' :
     G.phase === 'play' ? 'Waiting...' : '';
 
-  // player 0 bid badge
   const p0Badge = document.getElementById('human-bid-badge');
   if (G.phase === 'bid' && G.playerBids) {
-    const bid = G.playerBids[0];
+    const bid = G.playerBids[NET.myIdx];
     if (bid === 'pass') {
       p0Badge.className = 'bid-badge passed';
       p0Badge.textContent = 'Pass';
@@ -1399,7 +1524,7 @@ function renderTrickArea() {
   document.querySelectorAll('.trick-domino-play').forEach(el => el.remove());
   const table = document.getElementById('table');
   G.currentTrick.forEach(({ player, domino }) => {
-    const pos = TRICK_SLOT_POSITIONS[player];
+    const pos = TRICK_SLOT_POSITIONS[dispIdx(player)];
     const wrap = document.createElement('div');
     wrap.className = 'trick-domino-play';
     wrap.style.cssText = `position:absolute; top:${pos.top}; left:${pos.left};
@@ -1413,18 +1538,28 @@ function renderTrickArea() {
 function renderHumanHand() {
   const container = document.getElementById('human-hand');
   container.innerHTML = '';
+  const myHand = G.hands[NET.myIdx];
+  const isMyTurn = G.awaitingPlayer === NET.myIdx;
 
-  G.hands[0].forEach(d => {
-    const isLegal = G.awaitingHuman && canPlay(d, G.currentTrick, G.hands[0], G.trump);
-    const isDimmed = G.awaitingHuman && !isLegal;
+  myHand.forEach(d => {
+    const isLegal = isMyTurn && canPlay(d, G.currentTrick, myHand, G.trump);
+    const isDimmed = isMyTurn && !isLegal;
     const isTrumpD = G.trump !== null && isTrump(d, G.trump);
     const el = buildDomino(d, isLegal, isDimmed, isTrumpD);
     if (isLegal) {
       el.addEventListener('click', () => {
-        if (!G.awaitingHuman) return;
-        if (!canPlay(d, G.currentTrick, G.hands[0], G.trump)) return;
-        G.awaitingHuman = false;
-        playDomino(0, d);
+        if (G.awaitingPlayer !== NET.myIdx) return;
+        if (!canPlay(d, G.currentTrick, myHand, G.trump)) return;
+
+        if (NET.mode === 'client') {
+          sendToHost({ type: 'play', domino: d });
+          G.awaitingPlayer = null;
+          renderHumanHand();
+          return;
+        }
+
+        G.awaitingPlayer = null;
+        playDomino(NET.myIdx, d);
       });
     }
     container.appendChild(el);
@@ -1473,7 +1608,6 @@ function buildDomino(d, playable, dimmed, trumpMarker) {
   el.appendChild(divider);
   el.appendChild(botHalf);
 
-  // tooltip
   el.addEventListener('mouseenter', (e) => showTooltip(e, `${d.h}–${d.l} (set ${d.s})`));
   el.addEventListener('mouseleave', hideTooltip);
 
@@ -1509,7 +1643,6 @@ function showBidPanel() {
   document.getElementById('bid-panel-context').textContent =
     hb ? `Current high bid: ${hb.isMarks ? hb.amount + ' mark(s)' : hb.amount} on ${TRUMP_NAMES[hb.trump]} by P${hb.player}` : 'No bid yet — opens at 60.';
 
-  // trump options
   const trumpOpts = document.getElementById('trump-options');
   trumpOpts.innerHTML = '';
   let selectedTrump = 0;
@@ -1527,7 +1660,6 @@ function showBidPanel() {
     if (i === 0) selectedTrump = 0;
   });
 
-  // numeric
   const amountInput = document.getElementById('bid-amount');
   amountInput.value = Math.max(minNumeric, 60);
   amountInput.min = minNumeric;
@@ -1545,16 +1677,24 @@ function showBidPanel() {
     if (isNaN(amount) || amount < minNumeric || amount > 87) {
       alert(`Bid must be between ${minNumeric} and 87.`); return;
     }
-    G.highBid = { player: 0, isMarks: false, amount, trump };
-    G.bidActed[0] = true;
-    G.playerBids[0] = { isMarks: false, amount, trump };
+
+    if (NET.mode === 'client') {
+      sendToHost({ type: 'bid', bid: { isMarks: false, amount, trump } });
+      G.awaitingPlayer = null;
+      hideBidPanel();
+      return;
+    }
+
+    G.highBid = { player: NET.myIdx, isMarks: false, amount, trump };
+    G.bidActed[NET.myIdx] = true;
+    G.playerBids[NET.myIdx] = { isMarks: false, amount, trump };
     log(`You bid ${amount} on ${TRUMP_NAMES[trump]}.`, 'highlight');
     hideBidPanel();
     renderPlayerAreas();
+    broadcastState();
     checkBidEnd();
   };
 
-  // mark bids: no prior mark bid → only 1 and 2 marks; prior mark bid → only current+1 (max 7)
   const marksRow = document.getElementById('mark-bids-row');
   marksRow.innerHTML = '';
   const markOptions = hasHighMark
@@ -1566,30 +1706,46 @@ function showBidPanel() {
     btn.textContent = `${m} mark${m > 1 ? 's' : ''}`;
     btn.addEventListener('click', () => {
       const trump = selectedTrump;
-      G.highBid = { player: 0, isMarks: true, amount: m, trump };
-      G.bidActed[0] = true;
-      G.playerBids[0] = { isMarks: true, amount: m, trump };
+
+      if (NET.mode === 'client') {
+        sendToHost({ type: 'bid', bid: { isMarks: true, amount: m, trump } });
+        G.awaitingPlayer = null;
+        hideBidPanel();
+        return;
+      }
+
+      G.highBid = { player: NET.myIdx, isMarks: true, amount: m, trump };
+      G.bidActed[NET.myIdx] = true;
+      G.playerBids[NET.myIdx] = { isMarks: true, amount: m, trump };
       log(`You bid ${m} mark(s) on ${TRUMP_NAMES[trump]}.`, 'highlight');
       hideBidPanel();
       renderPlayerAreas();
+      broadcastState();
       checkBidEnd();
     });
     marksRow.appendChild(btn);
   });
 
   document.getElementById('bid-pass').onclick = () => {
-    if (!G.highBid && G.bidStartIdx === 0) {
-      // bid-start cannot pass if no one else bid
-      const others = G.bidPassed.filter((p, i) => i !== 0 && !p).length;
+    if (!G.highBid && G.bidStartIdx === NET.myIdx) {
+      const others = G.bidPassed.filter((p, i) => i !== NET.myIdx && !p).length;
       if (others === 0) { alert('You must bid at least 60 — no one else bid!'); return; }
     }
-    G.bidPassed[0] = true;
-    G.bidActed[0] = true;
-    G.playerBids[0] = 'pass';
+
+    if (NET.mode === 'client') {
+      sendToHost({ type: 'bid', bid: null });
+      G.awaitingPlayer = null;
+      hideBidPanel();
+      return;
+    }
+
+    G.bidPassed[NET.myIdx] = true;
+    G.bidActed[NET.myIdx] = true;
+    G.playerBids[NET.myIdx] = 'pass';
     log('You pass.', 'bad');
     hideBidPanel();
     renderPlayerAreas();
-    //nextBidder();  // Kevin commented this out and replaced with next line
+    broadcastState();
     checkBidEnd();
   };
 }
@@ -1630,7 +1786,7 @@ function renderKittyPanel() {
     kd.appendChild(wrap);
   });
 
-  const displayHand = [...G.hands[0]];
+  const displayHand = [...G.hands[NET.myIdx]];
   displayHand.forEach((d, i) => {
     const wrap = document.createElement('div');
     wrap.className = 'kitty-domino-wrap';
@@ -1700,7 +1856,9 @@ function hideResultPanel() {
 function showGameOver() {
   document.getElementById('gameover-overlay').classList.remove('hidden');
   const winner = G.teamScores[0] >= 7 ? 'Team A' : 'Team B';
-  document.getElementById('gameover-title').textContent = winner === 'Team A' ? '🎉 You Win!' : 'Team B Wins';
+  const isMyTeamA = TEAM[NET.myIdx] === 0;
+  document.getElementById('gameover-title').textContent =
+    (winner === 'Team A' && isMyTeamA) || (winner === 'Team B' && !isMyTeamA) ? '🎉 You Win!' : `${winner} Wins`;
   document.getElementById('gameover-text').textContent =
     `Final score: Team A ${G.teamScores[0]}–${G.teamScores[1]} Team B`;
 }
@@ -1714,10 +1872,8 @@ function aiDelay() {
 
 function highlightCurrentPlayer(idx) {
   document.querySelectorAll('.player-label').forEach(el => el.classList.remove('active'));
-  if (idx > 0) {
-    const area = document.getElementById(`player-area-${idx}`);
-    if (area) area.querySelector('.player-label')?.classList.add('active');
-  }
+  const area = document.getElementById(`player-area-${idx}`);
+  if (area) area.querySelector('.player-label')?.classList.add('active');
 }
 
 function log(msg, type = '') {
@@ -1742,10 +1898,503 @@ function hideTooltip() {
 }
 
 // ─────────────────────────────────────────────
+// NETWORK LAYER
+// ─────────────────────────────────────────────
+
+function randomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function broadcastState() {
+  if (NET.mode !== 'host') return;
+  const state = JSON.parse(JSON.stringify(G));
+  Object.values(NET.connections).forEach(conn => {
+    if (conn.open) conn.send({ type: 'state', G: state });
+  });
+}
+
+function sendToHost(msg) {
+  if (NET.hostConn && NET.hostConn.open) {
+    NET.hostConn.send(msg);
+  }
+}
+
+function assignNextSeat() {
+  for (let i = 1; i <= 5; i++) {
+    if (NET.playerTypes[i] === 'ai') return i;
+  }
+  return -1; // full
+}
+
+function handleClientMessage(conn, data) {
+  // find which player this connection belongs to
+  const playerIdx = parseInt(Object.entries(NET.connections).find(([, v]) => v === conn)?.[0] ?? '-1');
+  if (playerIdx < 0) return;
+
+  switch (data.type) {
+    case 'bid': {
+      if (G.currentBidder !== playerIdx) return;
+      const bid = data.bid;
+      if (!bid) {
+        G.bidPassed[playerIdx] = true;
+        G.bidActed[playerIdx] = true;
+        G.playerBids[playerIdx] = 'pass';
+        log(`Player ${playerIdx} passes.`);
+      } else {
+        G.highBid = { player: playerIdx, ...bid };
+        G.bidActed[playerIdx] = true;
+        G.playerBids[playerIdx] = bid;
+        const bidStr = bid.isMarks ? `${bid.amount} mark(s)` : bid.amount;
+        log(`Player ${playerIdx} bids ${bidStr} on ${TRUMP_NAMES[bid.trump]}.`, 'highlight');
+      }
+      G.awaitingPlayer = null;
+      renderPlayerAreas();
+      renderBidInfo();
+      broadcastState();
+      checkBidEnd();
+      break;
+    }
+    case 'play': {
+      if (G.awaitingPlayer !== playerIdx) return;
+      const domino = data.domino;
+      if (!canPlay(domino, G.currentTrick, G.hands[playerIdx], G.trump)) return;
+      G.awaitingPlayer = null;
+      playDomino(playerIdx, domino);
+      break;
+    }
+    case 'kitty': {
+      if (G.bidWinner !== playerIdx) return;
+      const { ks, hs } = data;
+      if (ks.length !== hs.length && ks.length > 0) return;
+      ks.forEach((ki, i) => {
+        const hi = hs[i];
+        const tmp = G.kitty[ki];
+        G.kitty[ki] = G.hands[playerIdx][hi];
+        G.hands[playerIdx][hi] = tmp;
+      });
+      log(`Player ${playerIdx} swaps ${ks.length} domino(es) with the kitty.`);
+      hideKittyPanel();
+      broadcastState();
+      startPlay();
+      break;
+    }
+  }
+}
+
+function handleHostMessage(data) {
+  switch (data.type) {
+    case 'seat':
+      NET.myIdx = data.idx;
+      renderLobby();
+      break;
+    case 'state':
+      G = data.G;
+      renderAll();
+      // Show UI prompts if it's this client's turn
+      if (G.phase === 'bid' && G.awaitingPlayer === NET.myIdx) {
+        showBidPanel();
+      } else if (G.phase === 'kitty' && G.bidWinner === NET.myIdx && G.awaitingPlayer === NET.myIdx) {
+        showKittyPanel();
+      }
+      // play turn is handled by renderHumanHand showing highlighted tiles
+      break;
+    case 'gameStart':
+      NET.playerTypes = data.playerTypes;
+      NET.playerNames = data.playerNames;
+      G = data.G;
+      hideLobby();
+      renderAll();
+      log('Game started!', 'good');
+      break;
+    case 'playerJoined':
+      renderLobby(); // refresh lobby UI with updated seat list
+      break;
+  }
+}
+
+// ─────────────────────────────────────────────
+// LOBBY
+// ─────────────────────────────────────────────
+
+function showLobby() {
+  document.getElementById('lobby-overlay').classList.remove('hidden');
+  renderLobby();
+}
+
+function hideLobby() {
+  document.getElementById('lobby-overlay').classList.add('hidden');
+}
+
+function renderLobby() {
+  const content = document.getElementById('lobby-content');
+  const title = document.getElementById('lobby-title');
+
+  if (NET.mode === 'local') {
+    title.textContent = 'Multiplayer';
+    content.innerHTML = '';
+
+    const desc = document.createElement('p');
+    desc.textContent = 'Play with friends anywhere. Create a game and share the room code, or join an existing game.';
+    content.appendChild(desc);
+
+    const btns = document.createElement('div');
+    btns.className = 'lobby-mode-btns';
+
+    const createBtn = document.createElement('button');
+    createBtn.className = 'btn btn-primary';
+    createBtn.textContent = 'Create Game';
+    createBtn.onclick = () => createRoom();
+
+    const joinBtn = document.createElement('button');
+    joinBtn.className = 'btn btn-muted';
+    joinBtn.textContent = 'Join Game';
+    joinBtn.onclick = () => renderJoinForm();
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn btn-muted';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = hideLobby;
+
+    btns.appendChild(createBtn);
+    btns.appendChild(joinBtn);
+    btns.appendChild(cancelBtn);
+    content.appendChild(btns);
+
+  } else if (NET.mode === 'host') {
+    title.textContent = 'Host — Waiting for Players';
+
+    content.innerHTML = '';
+
+    // Room code box
+    const codeBox = document.createElement('div');
+    codeBox.className = 'room-code-box';
+    const codeVal = document.createElement('div');
+    codeVal.className = 'room-code-val';
+    codeVal.textContent = NET.roomCode;
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn btn-muted';
+    copyBtn.style.fontSize = '11px';
+    copyBtn.textContent = 'Copy Code';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(NET.roomCode).then(() => {
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => { copyBtn.textContent = 'Copy Code'; }, 1500);
+      }).catch(() => {
+        prompt('Share this room code:', NET.roomCode);
+      });
+    };
+    codeBox.appendChild(codeVal);
+    codeBox.appendChild(copyBtn);
+    content.appendChild(codeBox);
+
+    const hint = document.createElement('div');
+    hint.className = 'lobby-status';
+    hint.textContent = 'Share this code with other players. Toggle seats between AI and open for human players.';
+    content.appendChild(hint);
+
+    // Seat list
+    const seatList = document.createElement('div');
+    seatList.className = 'seat-list';
+
+    for (let i = 0; i < 6; i++) {
+      const row = document.createElement('div');
+      row.className = `seat-row${i === 0 ? ' mine' : ''}`;
+
+      const num = document.createElement('div');
+      num.className = `seat-num ${TEAM[i] === 0 ? 'teamA' : 'teamB'}`;
+      num.textContent = `Seat ${i}`;
+
+      const status = document.createElement('div');
+      status.className = 'seat-status';
+
+      if (i === 0) {
+        status.className = 'seat-status you';
+        status.textContent = 'You (host)';
+      } else if (NET.playerTypes[i] === 'remote') {
+        status.className = 'seat-status filled';
+        status.textContent = NET.playerNames[i] || `Player ${i}`;
+      } else {
+        status.className = 'seat-status';
+        status.textContent = 'AI';
+      }
+
+      row.appendChild(num);
+      row.appendChild(status);
+
+      // Toggle button for open seats (only AI or empty can be toggled)
+      if (i > 0 && NET.playerTypes[i] !== 'remote') {
+        const toggle = document.createElement('button');
+        toggle.className = `seat-toggle${NET.playerTypes[i] === 'open' ? ' open' : ''}`;
+        toggle.textContent = NET.playerTypes[i] === 'open' ? 'Open' : 'AI';
+        toggle.title = 'Toggle between AI player and open seat for a human';
+        toggle.onclick = () => {
+          NET.playerTypes[i] = NET.playerTypes[i] === 'open' ? 'ai' : 'open';
+          renderLobby();
+        };
+        row.appendChild(toggle);
+      }
+
+      const teamTag = document.createElement('div');
+      teamTag.style.cssText = 'font-size:10px;color:var(--muted);flex-shrink:0';
+      teamTag.textContent = `Team ${TEAM[i] === 0 ? 'A' : 'B'}`;
+      row.appendChild(teamTag);
+
+      seatList.appendChild(row);
+    }
+    content.appendChild(seatList);
+
+    const startBtn = document.createElement('button');
+    startBtn.className = 'btn btn-gold';
+    startBtn.textContent = 'Start Game';
+    startBtn.onclick = hostStartGame;
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn btn-muted';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = () => {
+      if (NET.peer) NET.peer.destroy();
+      NET.mode = 'local';
+      NET.myIdx = 0;
+      NET.connections = {};
+      NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
+      NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+      NET.roomCode = '';
+      NET.peer = null;
+      hideLobby();
+    };
+
+    const actionRow = document.createElement('div');
+    actionRow.style.cssText = 'display:flex;gap:8px';
+    actionRow.appendChild(startBtn);
+    actionRow.appendChild(cancelBtn);
+    content.appendChild(actionRow);
+
+  } else if (NET.mode === 'client') {
+    title.textContent = 'Joined Game';
+    content.innerHTML = '';
+
+    if (NET.myIdx === 0) {
+      // Not yet assigned a seat
+      const status = document.createElement('div');
+      status.className = 'lobby-status';
+      status.textContent = 'Connecting...';
+      content.appendChild(status);
+    } else {
+      const info = document.createElement('div');
+      info.className = 'lobby-status ok';
+      info.textContent = `You are Seat ${NET.myIdx} (Team ${TEAM[NET.myIdx] === 0 ? 'A' : 'B'}). Waiting for host to start…`;
+      content.appendChild(info);
+    }
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn btn-muted';
+    cancelBtn.style.marginTop = '8px';
+    cancelBtn.textContent = 'Leave Game';
+    cancelBtn.onclick = () => {
+      if (NET.peer) NET.peer.destroy();
+      NET.mode = 'local';
+      NET.myIdx = 0;
+      NET.hostConn = null;
+      NET.peer = null;
+      NET.roomCode = '';
+      NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
+      NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+      hideLobby();
+    };
+    content.appendChild(cancelBtn);
+  }
+}
+
+function renderJoinForm() {
+  const content = document.getElementById('lobby-content');
+  const title = document.getElementById('lobby-title');
+  title.textContent = 'Join Game';
+  content.innerHTML = '';
+
+  const desc = document.createElement('p');
+  desc.textContent = 'Enter the 6-character room code shared by the host.';
+  content.appendChild(desc);
+
+  const inputRow = document.createElement('div');
+  inputRow.style.cssText = 'display:flex;gap:8px;align-items:center';
+
+  const codeInput = document.createElement('input');
+  codeInput.className = 'text-input';
+  codeInput.type = 'text';
+  codeInput.maxLength = 6;
+  codeInput.placeholder = 'XXXXXX';
+  codeInput.autocomplete = 'off';
+  codeInput.oninput = () => { codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g,''); };
+
+  const connectBtn = document.createElement('button');
+  connectBtn.className = 'btn btn-primary';
+  connectBtn.textContent = 'Connect';
+
+  const statusEl = document.createElement('div');
+  statusEl.className = 'lobby-status';
+
+  connectBtn.onclick = () => {
+    const code = codeInput.value.trim().toUpperCase();
+    if (code.length !== 6) { statusEl.className='lobby-status err'; statusEl.textContent='Enter a 6-character code.'; return; }
+    statusEl.className='lobby-status'; statusEl.textContent='Connecting…';
+    connectBtn.disabled = true;
+    joinRoom(code, statusEl);
+  };
+
+  inputRow.appendChild(codeInput);
+  inputRow.appendChild(connectBtn);
+  content.appendChild(inputRow);
+  content.appendChild(statusEl);
+
+  const backBtn = document.createElement('button');
+  backBtn.className = 'btn btn-muted';
+  backBtn.style.marginTop = '8px';
+  backBtn.textContent = '← Back';
+  backBtn.onclick = () => renderLobby();
+  content.appendChild(backBtn);
+
+  setTimeout(() => codeInput.focus(), 50);
+}
+
+function createRoom() {
+  const code = randomCode();
+  NET.roomCode = code;
+  NET.mode = 'host';
+  NET.myIdx = 0;
+  NET.playerTypes = ['human', 'open', 'open', 'open', 'open', 'open'];
+  NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  NET.connections = {};
+
+  const statusEl = document.createElement('div');
+
+  NET.peer = new Peer('ee88-' + code, {
+    debug: 0,
+    config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+  });
+
+  NET.peer.on('error', (err) => {
+    if (err.type === 'unavailable-id') {
+      // code collision — try a new one
+      NET.peer.destroy();
+      createRoom();
+    } else {
+      console.error('PeerJS error:', err);
+    }
+  });
+
+  NET.peer.on('open', () => {
+    renderLobby();
+  });
+
+  NET.peer.on('connection', (conn) => {
+    conn.on('open', () => {
+      // Find the first open seat
+      const seatIdx = Object.entries(NET.playerTypes).findIndex(([i, t]) => parseInt(i) > 0 && t === 'open');
+      if (seatIdx < 0) { conn.close(); return; }
+
+      NET.connections[seatIdx] = conn;
+      NET.playerTypes[seatIdx] = 'remote';
+
+      conn.send({ type: 'seat', idx: seatIdx });
+      // Send current game state to the new player
+      const state = JSON.parse(JSON.stringify(G));
+      conn.send({ type: 'state', G: state });
+
+      log(`Player ${seatIdx} (remote) joined.`, 'highlight');
+      renderLobby();
+      renderPlayerAreas();
+    });
+
+    conn.on('data', (data) => handleClientMessage(conn, data));
+
+    conn.on('close', () => {
+      const idx = parseInt(Object.entries(NET.connections).find(([, v]) => v === conn)?.[0] ?? '-1');
+      if (idx >= 0) {
+        NET.playerTypes[idx] = 'ai';
+        delete NET.connections[idx];
+        log(`Player ${idx} disconnected. Seat taken by AI.`, 'bad');
+        renderLobby();
+        renderPlayerAreas();
+      }
+    });
+  });
+
+  renderLobby();
+}
+
+function joinRoom(code, statusEl) {
+  NET.mode = 'client';
+  NET.myIdx = 0; // will be assigned by host
+  NET.roomCode = code;
+
+  NET.peer = new Peer({
+    debug: 0,
+    config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+  });
+
+  NET.peer.on('error', (err) => {
+    if (statusEl) { statusEl.className = 'lobby-status err'; statusEl.textContent = 'Connection failed: ' + err.message; }
+    NET.mode = 'local';
+    NET.peer.destroy();
+    NET.peer = null;
+  });
+
+  NET.peer.on('open', () => {
+    NET.hostConn = NET.peer.connect('ee88-' + code);
+
+    NET.hostConn.on('open', () => {
+      if (statusEl) { statusEl.className = 'lobby-status ok'; statusEl.textContent = 'Connected! Waiting for seat assignment…'; }
+    });
+
+    NET.hostConn.on('data', (data) => handleHostMessage(data));
+
+    NET.hostConn.on('error', (err) => {
+      if (statusEl) { statusEl.className = 'lobby-status err'; statusEl.textContent = 'Error: ' + err.message; }
+    });
+
+    NET.hostConn.on('close', () => {
+      if (NET.mode === 'client') {
+        alert('Disconnected from host.');
+        NET.mode = 'local';
+        NET.myIdx = 0;
+        NET.peer = null;
+        NET.hostConn = null;
+      }
+    });
+  });
+
+  NET.mode = 'client';
+  renderLobby();
+}
+
+function hostStartGame() {
+  // Finalize: any seat still marked 'open' becomes AI
+  NET.playerTypes = NET.playerTypes.map((t, i) => {
+    if (i === 0) return 'human';
+    return t === 'open' ? 'ai' : t;
+  });
+
+  // Start fresh game
+  initGame();
+  hideLobby();
+
+  // Broadcast game start + initial state to all clients
+  const msg = {
+    type: 'gameStart',
+    playerTypes: [...NET.playerTypes],
+    playerNames: [...NET.playerNames],
+    G: JSON.parse(JSON.stringify(G)),
+  };
+  Object.values(NET.connections).forEach(conn => {
+    if (conn.open) conn.send(msg);
+  });
+}
+
+// ─────────────────────────────────────────────
 // EVENT WIRING
 // ─────────────────────────────────────────────
 document.getElementById('kitty-confirm').addEventListener('click', () => {
-  // perform swaps
   const ks = kittyState.kittySelected;
   const hs = kittyState.handSelected;
 
@@ -1754,16 +2403,22 @@ document.getElementById('kitty-confirm').addEventListener('click', () => {
     return;
   }
 
-  // swap selected kitty → hand, hand → kitty
+  if (NET.mode === 'client') {
+    sendToHost({ type: 'kitty', ks: [...ks], hs: [...hs] });
+    hideKittyPanel();
+    return;
+  }
+
   ks.forEach((ki, idx) => {
     const hi = hs[idx];
     const tmp = G.kitty[ki];
-    G.kitty[ki] = G.hands[0][hi];
-    G.hands[0][hi] = tmp;
+    G.kitty[ki] = G.hands[NET.myIdx][hi];
+    G.hands[NET.myIdx][hi] = tmp;
   });
 
   log(`You swap ${ks.length} domino(es) with the kitty.`);
   hideKittyPanel();
+  broadcastState();
   startPlay();
 });
 
@@ -1776,7 +2431,17 @@ document.getElementById('result-continue').addEventListener('click', () => {
 
 document.getElementById('gameover-newgame').addEventListener('click', () => {
   document.getElementById('gameover-overlay').classList.add('hidden');
-  initGame();
+  if (NET.mode === 'host') {
+    initGame();
+    hostStartGame();
+  } else if (NET.mode === 'local') {
+    initGame();
+  }
+  // Clients wait for host to broadcast new game state
+});
+
+document.getElementById('multiplayer-btn').addEventListener('click', () => {
+  showLobby();
 });
 
 // ─────────────────────────────────────────────
@@ -1792,26 +2457,22 @@ initGame();
 function testLastBidPass() {
   console.log("🧪 Testing: Human is last bidder and passes...");
   initGame();
-  
-  // Setup: Player 1 starts, making Human (0) the final bidder in the sequence.
+
   G.bidStartIdx = 1;
-  
-  // Simulate players 1-5 passing.
+
   for (let i = 1; i <= 5; i++) {
     G.bidPassed[i] = true;
     G.bidActed[i] = true;
     G.playerBids[i] = 'pass';
   }
-  G.highBid = null; // No one has made a bid yet.
+  G.highBid = null;
 
-  // Simulate human passing (P0).
   G.bidPassed[0] = true;
   G.bidActed[0] = true;
   G.playerBids[0] = 'pass';
-  
-  // Execute the bidding conclusion logic.
+
   checkBidEnd();
-  
+
   console.assert(G.phase === 'kitty', `Expected phase to be 'kitty', but got '${G.phase}'`);
   if (G.phase === 'kitty') console.log("✅ Test Passed: Phase correctly transitioned to kitty.");
 }
