@@ -624,9 +624,10 @@
 
     /* ── RESPONSIVE — iPad landscape (≤1400px) ── */
     @media (max-width: 1400px) {
-      /* Hide log panel; re-define grid without its column */
-      #log-panel { display: none; }
-      #main { grid-template-columns: 140px 1fr 140px 160px; }
+      /* Re-define grid with a narrower log panel column */
+      #main { grid-template-columns: 140px 140px 1fr 140px 160px; }
+      #log-panel h3 { font-size: 13px; padding: 6px 8px; }
+      #log-entries { font-size: 12px; }
 
       /* Smaller text in the game area */
       .player-label { font-size: 20px; }
