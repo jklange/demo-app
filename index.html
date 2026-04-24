@@ -1204,6 +1204,9 @@ function startRound() {
   G.trickInProgress = false;
 
   deal();
+  const defaultPip = bestDefaultSortPip(G.hands[NET.myIdx]);
+  sortHandByNumber(G.hands[NET.myIdx], defaultPip);
+  G.handSortPip = defaultPip;
   log(`Round ${G.roundNum} begins. Bid starts with Player ${G.bidStartIdx}.`, 'highlight');
 
   G.phase = 'bid';
@@ -1344,6 +1347,15 @@ function sortHandByNumber(hand, n) {
     if (ga !== gb) return ga - gb;
     return rank(b, gb) - rank(a, ga);
   });
+}
+
+function bestDefaultSortPip(hand) {
+  let best = 0, bestCount = -1;
+  for (let p = 0; p <= 6; p++) {
+    const cnt = hand.filter(d => d.h === p || d.l === p).length;
+    if (cnt > bestCount) { bestCount = cnt; best = p; }
+  }
+  return best;
 }
 
 function startPlay() {
