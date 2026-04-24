@@ -407,7 +407,8 @@
     .bid-status-name { font-weight: 600; }
     .bid-status-name.teamA { color: var(--teamA); }
     .bid-status-name.teamB { color: var(--teamB); }
-    .bid-status-val { color: var(--text); }
+    .bid-status-val.teamA { color: var(--teamA); }
+    .bid-status-val.teamB { color: var(--teamB); }
     .trump-btn {
       padding: 8px 4px;
       border-radius: 6px;
@@ -1771,7 +1772,7 @@ function showBidPanel() {
       nameEl.className = `bid-status-name ${teamClass}`;
       nameEl.textContent = i === NET.myIdx ? 'You' : (NET.playerNames[i] || `P${i}`);
       const valEl = document.createElement('span');
-      valEl.className = 'bid-status-val';
+      valEl.className = `bid-status-val ${teamClass}`;
       if (bid === 'pass') {
         valEl.textContent = 'Pass';
       } else {
