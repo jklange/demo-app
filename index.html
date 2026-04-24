@@ -621,6 +621,56 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     .name-input:focus { outline: none; border-color: var(--teamA); }
+
+    /* ── RESPONSIVE — iPad landscape (≤1400px) ── */
+    @media (max-width: 1400px) {
+      /* Hide log panel; re-define grid without its column */
+      #log-panel { display: none; }
+      #main { grid-template-columns: 140px 1fr 140px 160px; }
+
+      /* Smaller text in the game area */
+      .player-label { font-size: 20px; }
+      .bid-badge    { font-size: 20px; }
+      #human-hint   { font-size: 18px; }
+      .tricks-col-header { font-size: 13px; padding: 4px 6px; letter-spacing: 0; }
+      .trick-count       { font-size: 13px; }
+      .trick-pts-badge   { font-size: 13px; }
+      #right-panel h3    { font-size: 13px; }
+      #phase-display, #bid-info, #trump-display, #trick-score { font-size: 14px; }
+
+      /* Hand dominoes: 56×106px → 9 fit across a 560px table area */
+      #human-hand { gap: 4px; }
+      #human-hand .domino.vertical { width: 56px; height: 106px; border-radius: 7px; border-width: 3px; }
+      #human-hand .domino.vertical .pip-grid { width: 36px; height: 36px; }
+      #human-hand .domino.vertical .pip      { width:  7px; height:  7px; }
+      #human-hand .domino.vertical .divider  { height: 1px; margin: 0 5px; }
+    }
+
+    /* ── RESPONSIVE — iPad portrait / small tablet (≤900px) ── */
+    @media (max-width: 900px) {
+      #main { grid-template-columns: 100px 1fr 100px 130px; }
+
+      /* Scorebar */
+      #scorebar { padding: 4px 10px; font-size: 13px; }
+      .team-label  { font-size: 13px; }
+      #round-info  { font-size: 13px; }
+      .mark        { width: 11px; height: 11px; }
+
+      /* Game area */
+      .player-label { font-size: 15px; }
+      .bid-badge    { font-size: 15px; }
+      #human-hint   { font-size: 13px; }
+      .tricks-col-header { font-size: 11px; padding: 3px 4px; }
+      .trick-count       { font-size: 11px; }
+
+      /* Hand dominoes: 44×83px → 9 fit across a ~420px table area */
+      #human-hand-area { padding: 6px 8px; gap: 4px; }
+      #human-hand { gap: 2px; }
+      #human-hand .domino.vertical { width: 44px; height: 83px; border-radius: 5px; border-width: 2px; }
+      #human-hand .domino.vertical .pip-grid { width: 28px; height: 28px; }
+      #human-hand .domino.vertical .pip      { width:  5px; height:  5px; }
+      #human-hand .domino.vertical .divider  { height: 1px; margin: 0 3px; }
+    }
   </style>
 </head>
 <body>
