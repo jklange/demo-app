@@ -65,7 +65,7 @@
       flex: 1;
       min-height: 0;
       display: grid;
-      grid-template-columns: 200px 1fr 200px 200px;
+      grid-template-columns: 200px 200px 1fr 200px;
       gap: 0;
       overflow: hidden;
     }
@@ -77,7 +77,7 @@
       overflow: hidden;
     }
     #tricks-col-a { border-right: 1px solid var(--border); }
-    #tricks-col-b { border-left: 1px solid var(--border); }
+    #tricks-col-b { border-right: 1px solid var(--border); }
     .tricks-col-header {
       padding: 5px 8px;
       font-size: 16px;
@@ -640,7 +640,7 @@
 
     /* ── RESPONSIVE — iPad landscape (≤1400px) ── */
     @media (max-width: 1400px) {
-      #main { grid-template-columns: 140px 1fr 140px 160px; }
+      #main { grid-template-columns: 140px 140px 1fr 160px; }
       #log-entries { font-size: 12px; }
 
       /* Smaller text in the game area */
@@ -663,7 +663,7 @@
 
     /* ── RESPONSIVE — iPad portrait / small tablet (≤900px) ── */
     @media (max-width: 900px) {
-      #main { grid-template-columns: 100px 1fr 100px 130px; }
+      #main { grid-template-columns: 100px 100px 1fr 130px; }
 
       /* Scorebar */
       #scorebar { padding: 4px 10px; font-size: 13px; }
@@ -714,6 +714,12 @@
     <div class="tricks-rows" id="trick-rows-a"></div>
   </div>
 
+  <!-- TEAM B TRICKS -->
+  <div class="tricks-col" id="tricks-col-b">
+    <div class="tricks-col-header teamB">Team B<span class="trick-count" id="tricks-b-count"></span></div>
+    <div class="tricks-rows" id="trick-rows-b"></div>
+  </div>
+
   <!-- TABLE -->
   <div id="table">
     <!-- player areas positioned by JS -->
@@ -724,12 +730,6 @@
       <div style="color:var(--muted)" id="human-hint"></div>
       <div id="human-hand"></div>
     </div>
-  </div>
-
-  <!-- TEAM B TRICKS -->
-  <div class="tricks-col" id="tricks-col-b">
-    <div class="tricks-col-header teamB">Team B<span class="trick-count" id="tricks-b-count"></span></div>
-    <div class="tricks-rows" id="trick-rows-b"></div>
   </div>
 
   <!-- RIGHT PANEL -->
@@ -1560,9 +1560,11 @@ function renderTricksWon() {
       ? `${teamTricks.length} trick${teamTricks.length > 1 ? 's' : ''} · ${G.teamTrickPts[teamIdx]} pts`
       : '';
 
-    [...teamTricks].reverse().forEach(({ plays, pts }) => {
+    G.completedTricks.forEach(({ winner, plays, pts }) => {
+      const ours = TEAM[winner] === teamIdx;
       const row = document.createElement('div');
       row.className = 'trick-row';
+      if (!ours) row.style.visibility = 'hidden';
       const dominoRow = document.createElement('div');
       dominoRow.className = 'trick-dominoes-row';
       plays.forEach(({ domino }) => {
