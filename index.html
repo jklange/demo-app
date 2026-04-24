@@ -404,10 +404,10 @@
       border-bottom: 1px solid var(--border);
     }
     .bid-status-row:last-child { border-bottom: none; }
-    .bid-status-name { color: var(--text); font-weight: 600; }
-    .bid-status-val { }
-    .bid-status-val.passed { color: var(--teamB); }
-    .bid-status-val.bid { color: var(--teamA); }
+    .bid-status-name { font-weight: 600; }
+    .bid-status-name.teamA { color: var(--teamA); }
+    .bid-status-name.teamB { color: var(--teamB); }
+    .bid-status-val { color: var(--text); }
     .trump-btn {
       padding: 8px 4px;
       border-radius: 6px;
@@ -1767,16 +1767,15 @@ function showBidPanel() {
       const row = document.createElement('div');
       row.className = 'bid-status-row';
       const nameEl = document.createElement('span');
-      nameEl.className = 'bid-status-name';
+      const teamClass = TEAM[i] === 0 ? 'teamA' : 'teamB';
+      nameEl.className = `bid-status-name ${teamClass}`;
       nameEl.textContent = i === NET.myIdx ? 'You' : (NET.playerNames[i] || `P${i}`);
       const valEl = document.createElement('span');
       valEl.className = 'bid-status-val';
       if (bid === 'pass') {
         valEl.textContent = 'Pass';
-        valEl.classList.add('passed');
       } else {
         valEl.textContent = `${bid.isMarks ? bid.amount + ' mark(s)' : bid.amount} on ${TRUMP_NAMES[bid.trump]}`;
-        valEl.classList.add('bid');
       }
       row.appendChild(nameEl);
       row.appendChild(valEl);
