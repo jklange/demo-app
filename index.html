@@ -69,8 +69,8 @@
       gap: 0;
       overflow: hidden;
     }
-    /* ≤1100px: iPad landscape — hide log, give table more room, shrink dominoes */
-    @media (max-width: 1100px) {
+    /* ≤1400px: iPad landscape (incl. iPad Pro) — hide log, give table more room, shrink dominoes */
+    @media (max-width: 1400px) {
       #log-panel { display: none; }
       #main { grid-template-columns: 140px 1fr 140px 120px; }
       .domino.vertical { width: 58px; height: 110px; }
@@ -81,6 +81,9 @@
       .pip { width: 8px; height: 8px; }
       .domino.vertical .divider { margin: 0 6px; }
       .domino.horizontal .divider { margin: 6px 0; }
+      .player-label { font-size: 20px; }
+      .bid-badge { font-size: 20px; }
+      #human-hint { font-size: 20px; }
     }
     /* ≤800px: iPad portrait — shrink columns further, shrink dominoes more */
     @media (max-width: 800px) {
@@ -93,6 +96,9 @@
       .pip { width: 6px; height: 6px; }
       .domino.vertical .divider { margin: 0 4px; }
       .domino.horizontal .divider { margin: 4px 0; }
+      .player-label { font-size: 16px; }
+      .bid-badge { font-size: 16px; }
+      #human-hint { font-size: 16px; }
     }
 
     /* ── TRICKS COLUMNS ── */
@@ -317,6 +323,8 @@
     .domino.trump-marker { border-color: #ff9800; }
 
     /* ── HUMAN HAND ── */
+    #human-hint { font-size: 32px; }
+
     #human-hand-area {
       position: absolute;
       bottom: 0;
@@ -685,7 +693,7 @@
     <div id="trick-area"></div>
     <div id="human-hand-area">
       <div id="human-bid-badge" class="bid-badge" style="display:none"></div>
-      <div style="font-size:32px;color:var(--muted)" id="human-hint"></div>
+      <div style="color:var(--muted)" id="human-hint"></div>
       <div id="human-hand"></div>
     </div>
   </div>
