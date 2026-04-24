@@ -1299,11 +1299,31 @@ function finishBidding() {
   renderAll();
 }
 
+function sortHand(hand, trump) {
+  // Groups: 0=trumps, 1=doubles, 2=count, 3=other
+  function group(d) {
+    if (isTrump(d, trump)) return 0;
+    if (d.h === d.l) return 1;
+    if (dominoPoints(d) > 0) return 2;
+    return 3;
+  }
+  function rank(d, g) {
+    if (g === 0) return trumpRank(d, trump);
+    return d.h + d.l;
+  }
+  hand.sort((a, b) => {
+    const ga = group(a), gb = group(b);
+    if (ga !== gb) return ga - gb;
+    return rank(b, gb) - rank(a, ga);
+  });
+}
+
 function startPlay() {
   hideKittyPanel();
   G.phase = 'play';
   G.trickLeader = G.bidWinner;
   G.currentTrick = [];
+  for (let i = 0; i < 6; i++) sortHand(G.hands[i], G.trump);
   renderAll();
   advanceTrick();
 }
