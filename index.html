@@ -1511,15 +1511,6 @@ function renderPlayerAreas() {
       }
     }
 
-    const pile = document.createElement('div');
-    pile.className = 'hand-pile';
-    for (let i = 0; i < G.hands[p].length; i++) {
-      const fd = document.createElement('div');
-      fd.className = 'face-down';
-      pile.appendChild(fd);
-    }
-    area.appendChild(pile);
-
     table.appendChild(area);
   }
 
