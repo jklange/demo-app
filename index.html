@@ -647,7 +647,7 @@
     <span style="font-size:11px;color:var(--muted)" id="team-b-players">(P1, P3, P5)</span>
     <span class="team-label teamB-label">Team B</span>
   </div>
-  <button class="btn btn-muted" id="multiplayer-btn" style="font-size:11px;padding:4px 10px;margin-left:12px;flex-shrink:0">Multiplayer</button>
+  <button class="btn btn-muted" id="quit-btn" style="font-size:11px;padding:4px 10px;margin-left:12px;flex-shrink:0">Quit</button>
 </div>
 
 <!-- MAIN -->
@@ -771,6 +771,19 @@
   <div class="panel" id="lobby-panel">
     <h2 id="lobby-title">Multiplayer</h2>
     <div id="lobby-content"></div>
+  </div>
+</div>
+
+<!-- MAIN MENU -->
+<div class="overlay" id="menu-overlay">
+  <div class="panel" id="menu-panel" style="text-align:center;align-items:center">
+    <h2>Eighty Eight</h2>
+    <p>Texas Dominoes</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;width:100%">
+      <button class="btn btn-gold" id="menu-singleplayer">Start Single Player Game</button>
+      <button class="btn btn-primary" id="menu-host">Host Multiplayer Game</button>
+      <button class="btn btn-muted" id="menu-join">Join Multiplayer Game</button>
+    </div>
   </div>
 </div>
 
@@ -2091,6 +2104,34 @@ function hideLobby() {
   document.getElementById('lobby-overlay').classList.add('hidden');
 }
 
+function showMainMenu() {
+  document.getElementById('menu-overlay').classList.remove('hidden');
+}
+
+function hideMainMenu() {
+  document.getElementById('menu-overlay').classList.add('hidden');
+}
+
+function quitToMenu() {
+  if (NET.peer) { NET.peer.destroy(); NET.peer = null; }
+  Object.values(NET.dropTimers).forEach(clearTimeout);
+  NET.mode = 'local';
+  NET.myIdx = 0;
+  NET.connections = {};
+  NET.hostConn = null;
+  NET.roomCode = '';
+  NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
+  NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  NET.myName = '';
+  NET.gameStarted = false;
+  NET.dropTimers = {};
+  NET.droppedNames = {};
+  ['bid-overlay','kitty-overlay','result-overlay','gameover-overlay','lobby-overlay'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+  });
+  showMainMenu();
+}
+
 function renderLobby() {
   const content = document.getElementById('lobby-content');
   const title = document.getElementById('lobby-title');
@@ -2235,6 +2276,7 @@ function renderLobby() {
       NET.dropTimers = {};
       NET.droppedNames = {};
       hideLobby();
+      showMainMenu();
     };
 
     const actionRow = document.createElement('div');
@@ -2306,6 +2348,7 @@ function renderLobby() {
       NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
       NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
       hideLobby();
+      showMainMenu();
     };
     content.appendChild(cancelBtn);
   }
@@ -2379,7 +2422,7 @@ function renderJoinForm() {
   backBtn.className = 'btn btn-muted';
   backBtn.style.marginTop = '8px';
   backBtn.textContent = '← Back';
-  backBtn.onclick = () => renderLobby();
+  backBtn.onclick = () => { hideLobby(); showMainMenu(); };
   content.appendChild(backBtn);
 
   setTimeout(() => nameInput.focus(), 50);
@@ -2425,6 +2468,7 @@ function renderReconnectPrompt(code) {
     NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
     NET.roomCode = '';
     hideLobby();
+    showMainMenu();
   };
   offlineBtn.textContent = 'Play Offline';
   content.appendChild(offlineBtn);
@@ -2638,23 +2682,38 @@ document.getElementById('result-continue').addEventListener('click', () => {
 
 document.getElementById('gameover-newgame').addEventListener('click', () => {
   document.getElementById('gameover-overlay').classList.add('hidden');
-  if (NET.mode === 'host') {
-    initGame();
-    hostStartGame();
-  } else if (NET.mode === 'local') {
-    initGame();
-  }
-  // Clients wait for host to broadcast new game state
+  quitToMenu();
 });
 
-document.getElementById('multiplayer-btn').addEventListener('click', () => {
-  showLobby();
+document.getElementById('quit-btn').addEventListener('click', () => {
+  quitToMenu();
+});
+
+document.getElementById('menu-singleplayer').addEventListener('click', () => {
+  hideMainMenu();
+  NET.mode = 'local';
+  NET.myIdx = 0;
+  NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
+  NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  initGame();
+});
+
+document.getElementById('menu-host').addEventListener('click', () => {
+  hideMainMenu();
+  document.getElementById('lobby-overlay').classList.remove('hidden');
+  createRoom();
+});
+
+document.getElementById('menu-join').addEventListener('click', () => {
+  hideMainMenu();
+  document.getElementById('lobby-overlay').classList.remove('hidden');
+  renderJoinForm();
 });
 
 // ─────────────────────────────────────────────
 // START
 // ─────────────────────────────────────────────
-initGame();
+showMainMenu();
 
 // ── TESTING UTILITIES ──
 /**
