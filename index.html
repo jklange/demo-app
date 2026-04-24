@@ -1410,6 +1410,7 @@ function playDomino(playerIdx, domino) {
   renderTrickArea();
   renderHumanHand();
   renderPlayerAreas();
+  renderTricksWon();
   if (G.currentTrick.length === 6) {
     G.trickInProgress = true;
     broadcastState();
