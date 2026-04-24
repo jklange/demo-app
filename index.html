@@ -69,6 +69,13 @@
       gap: 0;
       overflow: hidden;
     }
+    @media (max-width: 900px) {
+      #main { grid-template-columns: 120px 140px 1fr 140px 110px; }
+    }
+    @media (max-width: 700px) {
+      #main { grid-template-columns: 90px 110px 1fr 110px 90px; }
+    }
+
     /* ── TRICKS COLUMNS ── */
     .tricks-col {
       display: flex;
@@ -190,6 +197,10 @@
     .player-label.teamA { color: var(--teamA); border: 1px solid var(--teamA); }
     .player-label.teamB { color: var(--teamB); border: 1px solid var(--teamB); }
     .player-label.active { box-shadow: 0 0 8px currentColor; }
+    .player-hand-count {
+      font-size: 32px;
+      color: var(--muted);
+    }
     .bid-badge {
       font-size: 32px;
       padding: 2px 6px;
@@ -224,15 +235,15 @@
       display: flex;
       flex-direction: column;
       background: var(--domino-bg);
-      border-radius: 10px;
-      border: 4px solid #c8bfa0;
-      box-shadow: 4px 4px 8px rgba(0,0,0,0.5);
+      border-radius: 20px;
+      border: 8px solid #c8bfa0;
+      box-shadow: 8px 8px 16px rgba(0,0,0,0.5);
       cursor: default;
       position: relative;
       flex-shrink: 0;
     }
-    .domino.vertical { width: 72px; height: 136px; }
-    .domino.horizontal { width: 136px; height: 72px; flex-direction: row; }
+    .domino.vertical { width: 144px; height: 272px; }
+    .domino.horizontal { width: 272px; height: 144px; flex-direction: row; }
     .domino .half {
       flex: 1;
       position: relative;
@@ -241,31 +252,31 @@
       justify-content: center;
     }
     .domino.vertical .divider {
-      height: 2px;
+      height: 4px;
       background: #a09070;
-      margin: 0 8px;
+      margin: 0 16px;
     }
     .domino.horizontal .divider {
-      width: 2px;
+      width: 4px;
       background: #a09070;
-      margin: 8px 0;
+      margin: 16px 0;
     }
     /* pip grid */
     .pip-grid {
-      width: 48px;
-      height: 48px;
+      width: 96px;
+      height: 96px;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       grid-template-rows: repeat(3, 1fr);
       gap: 0;
     }
     .domino.horizontal .pip-grid {
-      width: 44px;
-      height: 44px;
+      width: 88px;
+      height: 88px;
     }
     .pip {
-      width: 10px;
-      height: 10px;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
       background: var(--domino-pip);
       margin: auto;
@@ -291,8 +302,6 @@
     .domino.trump-marker { border-color: #ff9800; }
 
     /* ── HUMAN HAND ── */
-    #human-hint { font-size: 32px; }
-
     #human-hand-area {
       position: absolute;
       bottom: 0;
@@ -386,7 +395,7 @@
     /* bid panel */
     #bid-panel .trump-options {
       display: grid;
-      grid-template-columns: repeat(7, 1fr) 1.4fr;
+      grid-template-columns: repeat(7, 1fr);
       gap: 6px;
     }
     .trump-btn {
@@ -402,8 +411,6 @@
     }
     .trump-btn:hover { border-color: var(--muted); }
     .trump-btn.selected { border-color: #ff9800; background: rgba(255,152,0,0.2); color: #ff9800; }
-    .trump-btn.follow-me { border-style: dashed; }
-    .trump-btn.follow-me.selected { border-style: dashed; }
     .bid-controls {
       display: flex;
       gap: 8px;
@@ -623,57 +630,6 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
     .name-input:focus { outline: none; border-color: var(--teamA); }
-
-    /* ── RESPONSIVE — iPad landscape (≤1400px) ── */
-    @media (max-width: 1400px) {
-      /* Re-define grid with a narrower log panel column */
-      #main { grid-template-columns: 140px 140px 1fr 140px 160px; }
-      #log-panel h3 { font-size: 13px; padding: 6px 8px; }
-      #log-entries { font-size: 12px; }
-
-      /* Smaller text in the game area */
-      .player-label { font-size: 20px; }
-      .bid-badge    { font-size: 20px; }
-      #human-hint   { font-size: 18px; }
-      .tricks-col-header { font-size: 13px; padding: 4px 6px; letter-spacing: 0; }
-      .trick-count       { font-size: 13px; }
-      .trick-pts-badge   { font-size: 13px; }
-      #right-panel h3    { font-size: 13px; }
-      #phase-display, #bid-info, #trump-display, #trick-score { font-size: 14px; }
-
-      /* Hand dominoes: 56×106px → 9 fit across a 560px table area */
-      #human-hand { gap: 4px; }
-      #human-hand .domino.vertical { width: 56px; height: 106px; border-radius: 7px; border-width: 3px; }
-      #human-hand .domino.vertical .pip-grid { width: 36px; height: 36px; }
-      #human-hand .domino.vertical .pip      { width:  7px; height:  7px; }
-      #human-hand .domino.vertical .divider  { height: 1px; margin: 0 5px; }
-    }
-
-    /* ── RESPONSIVE — iPad portrait / small tablet (≤900px) ── */
-    @media (max-width: 900px) {
-      #main { grid-template-columns: 100px 1fr 100px 130px; }
-
-      /* Scorebar */
-      #scorebar { padding: 4px 10px; font-size: 13px; }
-      .team-label  { font-size: 13px; }
-      #round-info  { font-size: 13px; }
-      .mark        { width: 11px; height: 11px; }
-
-      /* Game area */
-      .player-label { font-size: 15px; }
-      .bid-badge    { font-size: 15px; }
-      #human-hint   { font-size: 13px; }
-      .tricks-col-header { font-size: 11px; padding: 3px 4px; }
-      .trick-count       { font-size: 11px; }
-
-      /* Hand dominoes: 44×83px → 9 fit across a ~420px table area */
-      #human-hand-area { padding: 6px 8px; gap: 4px; }
-      #human-hand { gap: 2px; }
-      #human-hand .domino.vertical { width: 44px; height: 83px; border-radius: 5px; border-width: 2px; }
-      #human-hand .domino.vertical .pip-grid { width: 28px; height: 28px; }
-      #human-hand .domino.vertical .pip      { width:  5px; height:  5px; }
-      #human-hand .domino.vertical .divider  { height: 1px; margin: 0 3px; }
-    }
   </style>
 </head>
 <body>
@@ -714,7 +670,7 @@
     <div id="trick-area"></div>
     <div id="human-hand-area">
       <div id="human-bid-badge" class="bid-badge" style="display:none"></div>
-      <div style="color:var(--muted)" id="human-hint"></div>
+      <div style="font-size:32px;color:var(--muted)" id="human-hint"></div>
       <div id="human-hand"></div>
     </div>
   </div>
@@ -837,8 +793,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
-const FOLLOW_ME = 7;
+const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes'];
 const TEAM = [0, 1, 0, 1, 0, 1]; // player index → team (0=A, 1=B)
 const AI_DELAY_MIN = 700;
 const AI_DELAY_MAX = 1100;
@@ -964,7 +919,6 @@ function deal() {
 function dominoId(d) { return `${d.h}-${d.l}-${d.s}`; }
 
 function isTrump(d, trump) {
-  if (trump === FOLLOW_ME) return false;
   return d.h === trump || d.l === trump;
 }
 
@@ -1264,8 +1218,7 @@ function finishBidding() {
   G.bidWinner = G.highBid.player;
   G.trump = G.highBid.trump;
   const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : G.highBid.amount;
-  const trumpDesc = G.trump === FOLLOW_ME ? 'Follow Me (no trump)' : TRUMP_NAMES[G.trump];
-  log(`Bidding over. Player ${G.bidWinner} wins at ${bidStr} — ${trumpDesc}.`, 'good');
+  log(`Bidding over. Player ${G.bidWinner} wins at ${bidStr} on ${TRUMP_NAMES[G.trump]}.`, 'good');
   G.phase = 'kitty';
 
   if (G.bidWinner === NET.myIdx) {
@@ -1544,6 +1497,11 @@ function renderPlayerAreas() {
     }
     area.appendChild(label);
 
+    const count = document.createElement('div');
+    count.className = 'player-hand-count';
+    count.textContent = `${G.hands[p].length} tiles`;
+    area.appendChild(count);
+
     if (G.phase === 'bid') {
       const bid = G.playerBids ? G.playerBids[p] : null;
       if (bid || G.currentBidder === p) {
@@ -1561,6 +1519,15 @@ function renderPlayerAreas() {
         area.appendChild(badge);
       }
     }
+
+    const pile = document.createElement('div');
+    pile.className = 'hand-pile';
+    for (let i = 0; i < G.hands[p].length; i++) {
+      const fd = document.createElement('div');
+      fd.className = 'face-down';
+      pile.appendChild(fd);
+    }
+    area.appendChild(pile);
 
     table.appendChild(area);
   }
@@ -1646,14 +1613,7 @@ function renderBidInfo() {
   const trumpDisp = document.getElementById('trump-display');
   if (G.trump !== null && G.phase !== 'bid') {
     trumpDisp.style.display = 'flex';
-    const pip = trumpDisp.querySelector('.trump-pip');
-    if (G.trump === FOLLOW_ME) {
-      pip.style.display = 'none';
-      document.getElementById('trump-name').textContent = 'No Trump (Follow Me)';
-    } else {
-      pip.style.display = '';
-      document.getElementById('trump-name').textContent = TRUMP_NAMES[G.trump];
-    }
+    document.getElementById('trump-name').textContent = TRUMP_NAMES[G.trump];
   } else {
     trumpDisp.style.display = 'none';
   }
@@ -1724,13 +1684,8 @@ function showBidPanel() {
   let selectedTrump = 0;
   TRUMP_NAMES.forEach((name, i) => {
     const btn = document.createElement('button');
-    btn.className = `trump-btn${i === 0 ? ' selected' : ''}${i === FOLLOW_ME ? ' follow-me' : ''}`;
-    if (i === FOLLOW_ME) {
-      btn.textContent = name;
-      btn.style.fontStyle = 'italic';
-    } else {
-      btn.textContent = `${i}\n${name}`;
-    }
+    btn.className = `trump-btn${i === 0 ? ' selected' : ''}`;
+    btn.textContent = `${i}\n${name}`;
     btn.style.whiteSpace = 'pre';
     btn.addEventListener('click', () => {
       trumpOpts.querySelectorAll('.trump-btn').forEach(b => b.classList.remove('selected'));
@@ -1917,7 +1872,7 @@ function showResultPanel(marksWon) {
   const bidStr = hb.isMarks ? `${hb.amount} mark(s)` : hb.amount;
   document.getElementById('result-title').textContent = 'Round Complete';
   document.getElementById('result-summary').textContent =
-    `P${hb.player} bid ${bidStr} on ${hb.trump === FOLLOW_ME ? 'Follow Me (no trump)' : TRUMP_NAMES[hb.trump]}`;
+    `P${hb.player} bid ${bidStr} on ${TRUMP_NAMES[hb.trump]}`;
   const btn = document.getElementById('result-continue');
   if (NET.mode === 'client') {
     btn.textContent = 'Waiting for host…';
@@ -2792,6 +2747,7 @@ function testLastBidPass() {
   G.playerBids[0] = 'pass';
 
   checkBidEnd();
+
 
   console.assert(G.phase === 'kitty', `Expected phase to be 'kitty', but got '${G.phase}'`);
   if (G.phase === 'kitty') console.log("✅ Test Passed: Phase correctly transitioned to kitty.");
