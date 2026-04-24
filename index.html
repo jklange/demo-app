@@ -733,6 +733,7 @@
     <!-- player areas positioned by JS -->
     <div id="trick-area"></div>
     <div id="human-hand-area">
+      <div id="human-name-label" class="player-label teamA"></div>
       <div id="human-bid-badge" class="bid-badge" style="display:none"></div>
       <div style="color:var(--muted)" id="human-hint"></div>
       <div id="human-hand"></div>
@@ -883,22 +884,22 @@ const PIP_LAYOUTS = {
 // Visual seat positions indexed by display position (0 = bottom / human).
 // dispIdx() maps logical player → display position so the local human is always at 0.
 const SEAT_POSITIONS = [
-  null,                           // 0: human (bottom, handled separately)
-  { top:'72%', left:'12%' },     // 1: bottom-left
-  { top:'38%', left:'4%'  },     // 2: mid-left
-  { top:'8%',  left:'18%' },     // 3: top-left
-  { top:'8%',  right:'18%'},     // 4: top-right
-  { top:'38%', right:'4%' },     // 5: mid-right
+  null,                                                             // 0: human (bottom, handled separately)
+  { top:'74%', left:'16%' },                                       // 1: 8 o'clock
+  { top:'28%', left:'5%'  },                                       // 2: 10 o'clock
+  { top:'5%',  left:'50%', transform:'translateX(-50%)' },         // 3: 12 o'clock (center top)
+  { top:'28%', right:'5%' },                                       // 4: 2 o'clock
+  { top:'74%', right:'16%'},                                       // 5: 4 o'clock
 ];
 
 // Domino positions on #table for played trick, indexed by display position
 const TRICK_SLOT_POSITIONS = [
-  { top:'72%', left:'50%', rotate:   0 },
-  { top:'68%', left:'22%', rotate: -30 },
-  { top:'42%', left:'16%', rotate: -90 },
-  { top:'18%', left:'30%', rotate: 150 },
-  { top:'18%', left:'70%', rotate:-150 },
-  { top:'42%', left:'84%', rotate:  90 },
+  { top:'78%', left:'50%', rotate:   0 },   // 0: 6 o'clock (me)
+  { top:'68%', left:'30%', rotate: -30 },   // 1: 8 o'clock
+  { top:'40%', left:'18%', rotate: -90 },   // 2: 10 o'clock
+  { top:'18%', left:'50%', rotate: 180 },   // 3: 12 o'clock (center)
+  { top:'40%', left:'82%', rotate:  90 },   // 4: 2 o'clock
+  { top:'68%', left:'70%', rotate:  30 },   // 5: 4 o'clock
 ];
 
 // ─────────────────────────────────────────────
@@ -1589,6 +1590,14 @@ function renderPlayerAreas() {
 
     table.appendChild(area);
   }
+
+  // Local human name label
+  const humanLabel = document.getElementById('human-name-label');
+  const humanTeamClass = TEAM[NET.myIdx] === 0 ? 'teamA' : 'teamB';
+  const isHumanActive = G.phase === 'bid' ? G.currentBidder === NET.myIdx :
+                        G.phase === 'play' ? G.awaitingPlayer === NET.myIdx : false;
+  humanLabel.className = `player-label ${humanTeamClass}${isHumanActive ? ' active' : ''}`;
+  humanLabel.textContent = NET.playerNames[NET.myIdx] || 'You';
 
   // Local human hint + bid badge
   document.getElementById('human-hint').textContent =
