@@ -231,15 +231,15 @@
       display: flex;
       flex-direction: column;
       background: var(--domino-bg);
-      border-radius: 20px;
-      border: 8px solid #c8bfa0;
-      box-shadow: 8px 8px 16px rgba(0,0,0,0.5);
+      border-radius: 10px;
+      border: 4px solid #c8bfa0;
+      box-shadow: 4px 4px 8px rgba(0,0,0,0.5);
       cursor: default;
       position: relative;
       flex-shrink: 0;
     }
-    .domino.vertical { width: 144px; height: 272px; }
-    .domino.horizontal { width: 272px; height: 144px; flex-direction: row; }
+    .domino.vertical { width: 72px; height: 136px; }
+    .domino.horizontal { width: 136px; height: 72px; flex-direction: row; }
     .domino .half {
       flex: 1;
       position: relative;
@@ -248,31 +248,31 @@
       justify-content: center;
     }
     .domino.vertical .divider {
-      height: 4px;
+      height: 2px;
       background: #a09070;
-      margin: 0 16px;
+      margin: 0 8px;
     }
     .domino.horizontal .divider {
-      width: 4px;
+      width: 2px;
       background: #a09070;
-      margin: 16px 0;
+      margin: 8px 0;
     }
     /* pip grid */
     .pip-grid {
-      width: 96px;
-      height: 96px;
+      width: 48px;
+      height: 48px;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       grid-template-rows: repeat(3, 1fr);
       gap: 0;
     }
     .domino.horizontal .pip-grid {
-      width: 88px;
-      height: 88px;
+      width: 44px;
+      height: 44px;
     }
     .pip {
-      width: 20px;
-      height: 20px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       background: var(--domino-pip);
       margin: auto;
