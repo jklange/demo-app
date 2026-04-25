@@ -2122,6 +2122,11 @@ function selectBidTrump(i) {
   const trumpOpts = document.getElementById('trump-options');
   if (!trumpOpts) return;
   trumpOpts.querySelectorAll('.trump-btn').forEach((b, idx) => b.classList.toggle('selected', idx === i));
+  if (i !== FOLLOW_ME) {
+    sortHandByNumber(G.hands[NET.myIdx], i);
+    G.handSortPip = i;
+    renderBidPanelHand();
+  }
 }
 
 function showKittyPanel() {
