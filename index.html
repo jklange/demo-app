@@ -946,7 +946,8 @@ function dispIdx(logicalIdx) {
 // GAME STATE
 // ─────────────────────────────────────────────
 let G = {};
-let humanTurnDotTimer = null;
+let turnDotTimers = {};   // keyed by player index (includes NET.myIdx)
+let turnDotVisible = new Set(); // players whose dot delay has elapsed
 
 function initGame() {
   G = {
@@ -1641,6 +1642,20 @@ function renderScoreBar() {
   document.getElementById('team-b-players').textContent = `(${teamBPlayers.join(', ')})`;
 }
 
+function updateTurnDot(p, isActive) {
+  if (!isActive) {
+    clearTimeout(turnDotTimers[p]);
+    delete turnDotTimers[p];
+    turnDotVisible.delete(p);
+  } else if (!turnDotVisible.has(p) && !turnDotTimers[p]) {
+    turnDotTimers[p] = setTimeout(() => {
+      delete turnDotTimers[p];
+      turnDotVisible.add(p);
+      renderPlayerAreas();
+    }, 5000);
+  }
+}
+
 function renderPlayerAreas() {
   const table = document.getElementById('table');
   table.querySelectorAll('.player-area').forEach(el => el.remove());
@@ -1674,7 +1689,8 @@ function renderPlayerAreas() {
     }
     area.appendChild(label);
 
-    if (isActive) {
+    updateTurnDot(p, isActive);
+    if (isActive && turnDotVisible.has(p)) {
       const dot = document.createElement('div');
       dot.className = 'turn-dot';
       area.appendChild(dot);
@@ -1708,19 +1724,8 @@ function renderPlayerAreas() {
                         G.phase === 'play' ? G.awaitingPlayer === NET.myIdx : false;
   humanLabel.className = `player-label ${humanTeamClass}${isHumanActive ? ' active' : ''}`;
   humanLabel.textContent = NET.playerNames[NET.myIdx] || 'You';
-  const dot = document.getElementById('human-turn-dot');
-  if (!isHumanActive) {
-    clearTimeout(humanTurnDotTimer);
-    humanTurnDotTimer = null;
-    dot.style.display = 'none';
-  } else if (!humanTurnDotTimer && dot.style.display === 'none') {
-    humanTurnDotTimer = setTimeout(() => {
-      humanTurnDotTimer = null;
-      const isStillActive = G.phase === 'bid' ? G.currentBidder === NET.myIdx :
-                            G.phase === 'play' ? G.awaitingPlayer === NET.myIdx : false;
-      if (isStillActive) dot.style.display = '';
-    }, 5000);
-  }
+  updateTurnDot(NET.myIdx, isHumanActive);
+  document.getElementById('human-turn-dot').style.display = (isHumanActive && turnDotVisible.has(NET.myIdx)) ? '' : 'none';
 
   // Local human hint + bid badge
   document.getElementById('human-hint').textContent =
