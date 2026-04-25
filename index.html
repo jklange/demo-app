@@ -1412,6 +1412,7 @@ function playDomino(playerIdx, domino) {
   renderHumanHand();
   renderPlayerAreas();
   renderTricksWon();
+  renderBidInfo();
   if (G.currentTrick.length === 6) {
     G.trickInProgress = true;
     broadcastState();
@@ -1816,6 +1817,7 @@ function renderBidInfo() {
   if (G.phase === 'play' && G.trump !== null && G.trump !== FOLLOW_ME) {
     const playedTrumpIds = new Set(
       G.completedTricks.flatMap(t => t.plays.map(p => dominoId(p.domino)))
+        .concat(G.currentTrick.map(p => dominoId(p.domino)))
     );
     const allTrumps = createDeck().filter(d => isTrump(d, G.trump));
     const unplayed = allTrumps.filter(d => !playedTrumpIds.has(dominoId(d))).length;
