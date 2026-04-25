@@ -1789,7 +1789,8 @@ function renderBidInfo() {
     el.textContent = 'No bid yet.';
   } else {
     const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : G.highBid.amount;
-    el.innerHTML = `High bid: <b>${bidStr}</b><br>Trump: ${TRUMP_NAMES[G.highBid.trump]}<br>By: Player ${G.highBid.player}`;
+    const bidTeamClass = TEAM[G.highBid.player] === 0 ? 'teamA-label' : 'teamB-label';
+    el.innerHTML = `<span class="${bidTeamClass}">${bidStr} in ${TRUMP_NAMES[G.highBid.trump]} by Player ${G.highBid.player}</span>`;
   }
   const trumpDisp = document.getElementById('trump-display');
   if (G.trump !== null && G.phase !== 'bid') {
