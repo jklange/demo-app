@@ -946,6 +946,7 @@ function dispIdx(logicalIdx) {
 // GAME STATE
 // ─────────────────────────────────────────────
 let G = {};
+let humanTurnDotTimer = null;
 
 function initGame() {
   G = {
@@ -1707,7 +1708,19 @@ function renderPlayerAreas() {
                         G.phase === 'play' ? G.awaitingPlayer === NET.myIdx : false;
   humanLabel.className = `player-label ${humanTeamClass}${isHumanActive ? ' active' : ''}`;
   humanLabel.textContent = NET.playerNames[NET.myIdx] || 'You';
-  document.getElementById('human-turn-dot').style.display = isHumanActive ? '' : 'none';
+  const dot = document.getElementById('human-turn-dot');
+  if (!isHumanActive) {
+    clearTimeout(humanTurnDotTimer);
+    humanTurnDotTimer = null;
+    dot.style.display = 'none';
+  } else if (!humanTurnDotTimer && dot.style.display === 'none') {
+    humanTurnDotTimer = setTimeout(() => {
+      humanTurnDotTimer = null;
+      const isStillActive = G.phase === 'bid' ? G.currentBidder === NET.myIdx :
+                            G.phase === 'play' ? G.awaitingPlayer === NET.myIdx : false;
+      if (isStillActive) dot.style.display = '';
+    }, 5000);
+  }
 
   // Local human hint + bid badge
   document.getElementById('human-hint').textContent =
