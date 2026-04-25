@@ -420,6 +420,8 @@
     .trump-btn.selected { border-color: #ff9800; background: rgba(255,152,0,0.2); color: #ff9800; }
     .trump-btn.follow-me { border-style: dashed; }
     .trump-btn.follow-me.selected { border-style: dashed; }
+    .trump-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .trump-btn:disabled:hover { border-color: var(--border); }
     .bid-controls {
       display: flex;
       gap: 8px;
@@ -1919,10 +1921,15 @@ function showBidPanel() {
 
   const trumpOpts = document.getElementById('trump-options');
   trumpOpts.innerHTML = '';
-  let selectedTrump = 0;
+  const myHand = G.hands[NET.myIdx];
+  const hasPip = i => i === FOLLOW_ME || myHand.some(d => d.h === i || d.l === i);
+  if (!hasPip(bidSelectedTrump)) {
+    bidSelectedTrump = [0,1,2,3,4,5,6].find(i => hasPip(i)) ?? FOLLOW_ME;
+  }
   TRUMP_NAMES.forEach((name, i) => {
     const btn = document.createElement('button');
-    btn.className = `trump-btn${i === 0 ? ' selected' : ''}${i === FOLLOW_ME ? ' follow-me' : ''}`;
+    btn.className = `trump-btn${i === bidSelectedTrump ? ' selected' : ''}${i === FOLLOW_ME ? ' follow-me' : ''}`;
+    if (i !== FOLLOW_ME && !hasPip(i)) btn.disabled = true;
     if (i === FOLLOW_ME) {
       btn.textContent = name;
       btn.style.fontStyle = 'italic';
@@ -1930,13 +1937,8 @@ function showBidPanel() {
       btn.textContent = `${i}\n${name}`;
     }
     btn.style.whiteSpace = 'pre';
-    btn.addEventListener('click', () => {
-      trumpOpts.querySelectorAll('.trump-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      selectedTrump = i;
-    });
+    btn.addEventListener('click', () => selectBidTrump(i));
     trumpOpts.appendChild(btn);
-    if (i === 0) selectedTrump = 0;
   });
 
   const amountInput = document.getElementById('bid-amount');
@@ -1951,7 +1953,7 @@ function showBidPanel() {
   };
 
   document.getElementById('bid-submit').onclick = () => {
-    const trump = selectedTrump;
+    const trump = bidSelectedTrump;
     const amount = parseInt(amountInput.value);
     if (isNaN(amount) || amount < minNumeric || amount > 87) {
       alert(`Bid must be between ${minNumeric} and 87.`); return;
@@ -1984,7 +1986,7 @@ function showBidPanel() {
     btn.className = 'mark-bid-btn';
     btn.textContent = `${m} mark${m > 1 ? 's' : ''}`;
     btn.addEventListener('click', () => {
-      const trump = selectedTrump;
+      const trump = bidSelectedTrump;
 
       if (NET.mode === 'client') {
         sendToHost({ type: 'bid', bid: { isMarks: true, amount: m, trump } });
@@ -2054,6 +2056,7 @@ function renderBidPanelHand() {
         e.stopPropagation();
         sortHandByNumber(G.hands[NET.myIdx], val);
         G.handSortPip = val;
+        selectBidTrump(val);
         renderBidPanelHand();
         renderHumanHand();
       });
@@ -2068,6 +2071,14 @@ function hideBidPanel() {
 
 // kitty
 let kittyState = { kittySelected: [], handSelected: [] };
+
+let bidSelectedTrump = 0;
+function selectBidTrump(i) {
+  bidSelectedTrump = i;
+  const trumpOpts = document.getElementById('trump-options');
+  if (!trumpOpts) return;
+  trumpOpts.querySelectorAll('.trump-btn').forEach((b, idx) => b.classList.toggle('selected', idx === i));
+}
 
 function showKittyPanel() {
   kittyState = { kittySelected: [], handSelected: [] };
