@@ -746,6 +746,7 @@
     </div>
     <div id="kitty-label" style="display:none;font-size:13px;color:var(--muted);margin-top:6px">Kitty</div>
     <div id="kitty-in-phase" style="display:none"></div>
+    <div id="unplayed-trumps" style="display:none;font-size:13px;color:var(--muted);margin-top:8px"></div>
     <div id="trick-score" style="display:none">
       Team A: <span id="scoreA-pts">0</span> pts<br>
       Team B: <span id="scoreB-pts">0</span> pts<br>
@@ -1439,6 +1440,7 @@ function resolveTrick() {
   renderTrickArea();
   renderScorePanel();
   renderTricksWon();
+  renderBidInfo();
   broadcastState();
 
   if (G.completedTricks.length === 9) {
@@ -1797,6 +1799,7 @@ function renderBidInfo() {
 
   const kittyInPhase = document.getElementById('kitty-in-phase');
   const kittyLabel = document.getElementById('kitty-label');
+  const unplayedTrumpsEl = document.getElementById('unplayed-trumps');
   if (G.phase === 'play' && G.kitty && G.kitty.length > 0) {
     kittyInPhase.innerHTML = '';
     G.kitty.forEach(d => {
@@ -1809,6 +1812,17 @@ function renderBidInfo() {
   } else {
     kittyInPhase.style.display = 'none';
     kittyLabel.style.display = 'none';
+  }
+  if (G.phase === 'play' && G.trump !== null && G.trump !== FOLLOW_ME) {
+    const playedTrumpIds = new Set(
+      G.completedTricks.flatMap(t => t.plays.map(p => dominoId(p.domino)))
+    );
+    const allTrumps = createDeck().filter(d => isTrump(d, G.trump));
+    const unplayed = allTrumps.filter(d => !playedTrumpIds.has(dominoId(d))).length;
+    unplayedTrumpsEl.textContent = `Trumps unplayed: ${unplayed}`;
+    unplayedTrumpsEl.style.display = '';
+  } else {
+    unplayedTrumpsEl.style.display = 'none';
   }
 }
 
