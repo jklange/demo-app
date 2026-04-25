@@ -744,6 +744,7 @@
       <div class="trump-pip"></div>
       <span id="trump-name">—</span>
     </div>
+    <div id="kitty-label" style="display:none;font-size:13px;color:var(--muted);margin-top:6px">Kitty</div>
     <div id="kitty-in-phase" style="display:none"></div>
     <div id="trick-score" style="display:none">
       Team A: <span id="scoreA-pts">0</span> pts<br>
@@ -1792,22 +1793,10 @@ function renderBidInfo() {
     const bidTeamClass = TEAM[G.highBid.player] === 0 ? 'teamA-label' : 'teamB-label';
     el.innerHTML = `<span class="${bidTeamClass}">${bidStr} in ${TRUMP_NAMES[G.highBid.trump]} by Player ${G.highBid.player}</span>`;
   }
-  const trumpDisp = document.getElementById('trump-display');
-  if (G.trump !== null && G.phase !== 'bid') {
-    trumpDisp.style.display = 'flex';
-    const pip = trumpDisp.querySelector('.trump-pip');
-    if (G.trump === FOLLOW_ME) {
-      pip.style.display = 'none';
-      document.getElementById('trump-name').textContent = 'No Trump (Follow Me)';
-    } else {
-      pip.style.display = '';
-      document.getElementById('trump-name').textContent = TRUMP_NAMES[G.trump];
-    }
-  } else {
-    trumpDisp.style.display = 'none';
-  }
+  document.getElementById('trump-display').style.display = 'none';
 
   const kittyInPhase = document.getElementById('kitty-in-phase');
+  const kittyLabel = document.getElementById('kitty-label');
   if (G.phase === 'play' && G.kitty && G.kitty.length > 0) {
     kittyInPhase.innerHTML = '';
     G.kitty.forEach(d => {
@@ -1816,8 +1805,10 @@ function renderBidInfo() {
       kittyInPhase.appendChild(el);
     });
     kittyInPhase.style.display = 'flex';
+    kittyLabel.style.display = '';
   } else {
     kittyInPhase.style.display = 'none';
+    kittyLabel.style.display = 'none';
   }
 }
 
