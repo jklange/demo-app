@@ -448,6 +448,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      flex-wrap: wrap;
     }
     .btn {
       padding: 8px 16px;
@@ -492,6 +493,23 @@
       font-size: 16px;
     }
     .mark-bid-btn:hover { border-color: var(--gold); color: var(--gold); }
+    #mark-bids-row { border-left: 1px solid var(--border); padding-left: 8px; margin-left: 2px; }
+    .indication-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 15px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      border-left: 1px solid var(--border);
+      margin-left: 2px;
+      user-select: none;
+    }
+    .indication-label:has(input:checked) { border-color: var(--gold); color: var(--gold); }
 
     /* kitty panel */
     #kitty-panel .kitty-dominoes {
@@ -806,11 +824,9 @@
         <input class="num-input" type="number" id="bid-amount" value="60" min="60" max="87" />
         <button class="btn btn-muted" id="bid-inc">+</button>
         <button class="btn btn-primary" id="bid-submit">Bid</button>
+        <div class="marks-row" id="mark-bids-row"></div>
+        <label class="indication-label"><input type="checkbox" id="bid-indication"> Indication</label>
       </div>
-    </div>
-    <div>
-      <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Mark Bid</div>
-      <div class="marks-row" id="mark-bids-row"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px">
       <button class="btn btn-danger" id="bid-pass">Pass</button>
@@ -1292,7 +1308,7 @@ function advanceBid() {
         G.highBid = { player: G.currentBidder, ...finalBid };
         G.bidActed[G.currentBidder] = true;
         G.playerBids[G.currentBidder] = finalBid;
-        const bidStr = finalBid.isMarks ? `${finalBid.amount} mark(s)` : finalBid.amount;
+        const bidStr = finalBid.isMarks ? `${finalBid.amount} mark(s)` : `${finalBid.amount}${finalBid.indication ? ' [IND]' : ''}`;
         log(`Player ${G.currentBidder} bids ${bidStr} in ${TRUMP_NAMES[finalBid.trump]}.`, 'highlight');
       }
       renderPlayerAreas();
@@ -1323,7 +1339,7 @@ function finishBidding() {
   }
   G.bidWinner = G.highBid.player;
   G.trump = G.highBid.trump;
-  const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : G.highBid.amount;
+  const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : `${G.highBid.amount}${G.highBid.indication ? ' [IND]' : ''}`;
   const trumpDesc = G.trump === FOLLOW_ME ? 'Follow Me (no trump)' : TRUMP_NAMES[G.trump];
   log(`Bidding over. Player ${G.bidWinner} wins at ${bidStr} — ${trumpDesc}.`, 'good');
   G.phase = 'kitty';
@@ -1716,7 +1732,7 @@ function renderPlayerAreas() {
           badge.textContent = 'Pass';
         } else if (bid) {
           badge.className = 'bid-badge';
-          badge.textContent = bid.isMarks ? `${bid.amount}mk ${TRUMP_NAMES[bid.trump]}` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}`;
+          badge.textContent = bid.isMarks ? `${bid.amount}mk ${TRUMP_NAMES[bid.trump]}` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}${bid.indication ? ' [IND]' : ''}`;
         } else {
           badge.className = 'bid-badge';
           badge.textContent = '...';
@@ -1752,7 +1768,7 @@ function renderPlayerAreas() {
       p0Badge.style.display = '';
     } else if (bid) {
       p0Badge.className = 'bid-badge';
-      p0Badge.textContent = bid.isMarks ? `${bid.amount}mk ${TRUMP_NAMES[bid.trump]}` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}`;
+      p0Badge.textContent = bid.isMarks ? `${bid.amount}mk ${TRUMP_NAMES[bid.trump]}` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}${bid.indication ? ' [IND]' : ''}`;
       p0Badge.style.display = '';
     } else {
       p0Badge.style.display = 'none';
@@ -1849,7 +1865,7 @@ function renderBidInfo() {
   if (!G.highBid) {
     el.textContent = 'No bid yet.';
   } else {
-    const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : G.highBid.amount;
+    const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : `${G.highBid.amount}${G.highBid.indication ? ' [IND]' : ''}`;
     const bidTeamClass = TEAM[G.highBid.player] === 0 ? 'teamA-label' : 'teamB-label';
     el.innerHTML = `<span class="${bidTeamClass}">${bidStr} in ${TRUMP_NAMES[G.highBid.trump]} by Player ${G.highBid.player}</span>`;
   }
@@ -1943,7 +1959,7 @@ function showBidPanel() {
   const hasHighMark = hb && hb.isMarks;
 
   document.getElementById('bid-panel-context').textContent =
-    hb ? `Current high bid: ${hb.isMarks ? hb.amount + ' mark(s)' : hb.amount} in ${TRUMP_NAMES[hb.trump]} by P${hb.player}` : 'No bid yet — opens at 60.';
+    hb ? `Current high bid: ${hb.isMarks ? hb.amount + ' mark(s)' : hb.amount}${hb.indication ? ' [IND]' : ''} in ${TRUMP_NAMES[hb.trump]} by P${hb.player}` : 'No bid yet — opens at 60.';
 
   const statusSection = document.getElementById('bid-status-section');
   const statusList = document.getElementById('bid-status-list');
@@ -1964,7 +1980,7 @@ function showBidPanel() {
       if (bid === 'pass') {
         valEl.textContent = 'Pass';
       } else {
-        valEl.textContent = `${bid.isMarks ? bid.amount + ' mark(s)' : bid.amount} in ${TRUMP_NAMES[bid.trump]}`;
+        valEl.textContent = `${bid.isMarks ? bid.amount + ' mark(s)' : bid.amount}${bid.indication ? ' [IND]' : ''} in ${TRUMP_NAMES[bid.trump]}`;
       }
       row.appendChild(nameEl);
       row.appendChild(valEl);
@@ -2010,21 +2026,22 @@ function showBidPanel() {
   document.getElementById('bid-submit').onclick = () => {
     const trump = bidSelectedTrump;
     const amount = parseInt(amountInput.value);
+    const indication = document.getElementById('bid-indication')?.checked ?? false;
     if (isNaN(amount) || amount < minNumeric || amount > 87) {
       alert(`Bid must be between ${minNumeric} and 87.`); return;
     }
 
     if (NET.mode === 'client') {
-      sendToHost({ type: 'bid', bid: { isMarks: false, amount, trump } });
+      sendToHost({ type: 'bid', bid: { isMarks: false, amount, trump, indication } });
       G.awaitingPlayer = null;
       hideBidPanel();
       return;
     }
 
-    G.highBid = { player: NET.myIdx, isMarks: false, amount, trump };
+    G.highBid = { player: NET.myIdx, isMarks: false, amount, trump, indication };
     G.bidActed[NET.myIdx] = true;
-    G.playerBids[NET.myIdx] = { isMarks: false, amount, trump };
-    log(`You bid ${amount} in ${TRUMP_NAMES[trump]}.`, 'highlight');
+    G.playerBids[NET.myIdx] = { isMarks: false, amount, trump, indication };
+    log(`You bid ${amount} in ${TRUMP_NAMES[trump]}${indication ? ' (Indication)' : ''}.`, 'highlight');
     hideBidPanel();
     renderPlayerAreas();
     broadcastState();
@@ -2216,7 +2233,7 @@ function showResultPanel(marksWon) {
   const overlay = document.getElementById('result-overlay');
   overlay.classList.remove('hidden');
   const hb = G.highBid;
-  const bidStr = hb.isMarks ? `${hb.amount} mark(s)` : hb.amount;
+  const bidStr = hb.isMarks ? `${hb.amount} mark(s)` : `${hb.amount}${hb.indication ? ' [IND]' : ''}`;
   document.getElementById('result-title').textContent = 'Round Complete';
   document.getElementById('result-summary').textContent =
     `P${hb.player} bid ${bidStr} in ${hb.trump === FOLLOW_ME ? 'Follow Me (no trump)' : TRUMP_NAMES[hb.trump]}`;
@@ -2339,7 +2356,7 @@ function handleClientMessage(conn, data) {
         G.highBid = { player: playerIdx, ...bid };
         G.bidActed[playerIdx] = true;
         G.playerBids[playerIdx] = bid;
-        const bidStr = bid.isMarks ? `${bid.amount} mark(s)` : bid.amount;
+        const bidStr = bid.isMarks ? `${bid.amount} mark(s)` : `${bid.amount}${bid.indication ? ' [IND]' : ''}`;
         log(`Player ${playerIdx} bids ${bidStr} in ${TRUMP_NAMES[bid.trump]}.`, 'highlight');
       }
       G.awaitingPlayer = null;
