@@ -1948,11 +1948,13 @@ function renderHumanHand() {
     }
     prevGroup = g;
 
-    const isLegal = isMyTurn && canPlay(d, G.currentTrick, myHand, G.trump);
-    const isDimmed = isMyTurn && !isLegal;
+    const wouldBeLegal = canPlay(d, G.currentTrick, myHand, G.trump);
+    const isLegal = isMyTurn && wouldBeLegal;
+    const isHighlighted = (isMyTurn || canPreMove) && wouldBeLegal;
+    const isDimmed = (isMyTurn || canPreMove) && !wouldBeLegal;
     const isTrumpD = G.trump !== null && isTrump(d, G.trump);
     const isPreSelected = canPreMove && preMove && dominoId(d) === dominoId(preMove);
-    const el = buildDomino(d, isLegal, isDimmed, isTrumpD);
+    const el = buildDomino(d, isHighlighted, isDimmed, isTrumpD);
 
     if (isPreSelected) el.classList.add('premove');
 
@@ -1973,7 +1975,7 @@ function renderHumanHand() {
         G.awaitingPlayer = null;
         playDomino(NET.myIdx, d);
       });
-    } else if (canPreMove) {
+    } else if (canPreMove && wouldBeLegal) {
       el.style.cursor = 'pointer';
       el.addEventListener('click', () => {
         if (G.phase !== 'play' || G.awaitingPlayer === NET.myIdx) return;
