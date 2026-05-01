@@ -1926,9 +1926,6 @@ function buildDomino(d, playable, dimmed, trumpMarker) {
   el.appendChild(divider);
   el.appendChild(botHalf);
 
-  el.addEventListener('mouseenter', (e) => showTooltip(e, `${d.h}–${d.l} (set ${d.s})`));
-  el.addEventListener('mouseleave', hideTooltip);
-
   return el;
 }
 
