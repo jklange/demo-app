@@ -494,6 +494,13 @@
     }
     .mark-bid-btn:hover { border-color: var(--gold); color: var(--gold); }
     #mark-bids-row { border-left: 1px solid var(--border); padding-left: 8px; margin-left: 2px; }
+    .bid-action-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-left: auto;
+    }
+    .bid-action-btns .btn { width: 100%; }
     .indication-label {
       display: flex;
       align-items: center;
@@ -823,13 +830,13 @@
         <button class="btn btn-muted" id="bid-dec">−</button>
         <input class="num-input" type="number" id="bid-amount" value="60" min="60" max="87" />
         <button class="btn btn-muted" id="bid-inc">+</button>
-        <button class="btn btn-primary" id="bid-submit">Bid</button>
         <div class="marks-row" id="mark-bids-row"></div>
         <label class="indication-label"><input type="checkbox" id="bid-indication"> Indication</label>
+        <div class="bid-action-btns">
+          <button class="btn btn-primary" id="bid-submit">Bid</button>
+          <button class="btn btn-danger" id="bid-pass">Pass</button>
+        </div>
       </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="btn btn-danger" id="bid-pass">Pass</button>
     </div>
   </div>
 </div>
