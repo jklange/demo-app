@@ -382,7 +382,7 @@
       z-index: 100;
     }
     .overlay.hidden { display: none; }
-    #bid-overlay, #result-overlay, #gameover-overlay { background: transparent; }
+    #result-overlay, #gameover-overlay { background: transparent; }
     .panel {
       background: var(--surface2);
       border: 1px solid var(--border);
@@ -397,15 +397,57 @@
     .panel h2 { font-size: 22px; color: var(--gold); }
     .panel p { font-size: 16px; color: var(--muted); line-height: 1.5; }
 
-    /* bid panel */
-    #bid-panel { max-width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow-y: auto; }
-    #bid-panel-hand { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
-    #bid-panel-hand .domino.kitty-size .half { cursor: pointer; }
-    #bid-panel-hand .domino.kitty-size .half:hover { background: rgba(255,255,255,0.08); border-radius: 4px; }
-    #bid-panel .trump-options {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr) 1.4fr;
-      gap: 6px;
+    /* bid bar */
+    #bid-overlay {
+      background: var(--surface2);
+      border-bottom: 2px solid var(--border);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+      flex-shrink: 0;
+    }
+    #bid-overlay.hidden { display: none; }
+    #bid-bar {
+      display: flex;
+      align-items: center;
+      padding: 5px 10px;
+      gap: 0;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      min-height: 44px;
+    }
+    .bid-bar-context {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bid-bar-sep {
+      width: 1px;
+      height: 26px;
+      background: var(--border);
+      margin: 0 8px;
+      flex-shrink: 0;
+    }
+    .bid-bar-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .bid-bar-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-right: 3px;
+      white-space: nowrap;
+    }
+    #bid-bar .trump-options {
+      display: flex;
+      gap: 3px;
+      flex-wrap: nowrap;
     }
     .bid-status-row {
       display: flex;
@@ -422,15 +464,17 @@
     .bid-status-val.teamA { color: var(--teamA); }
     .bid-status-val.teamB { color: var(--teamB); }
     .trump-btn {
-      padding: 8px 4px;
-      border-radius: 6px;
+      padding: 4px 6px;
+      border-radius: 5px;
       border: 2px solid var(--border);
       background: var(--surface);
       color: var(--text);
       cursor: pointer;
-      font-size: 16px;
+      font-size: 13px;
       text-align: center;
       transition: all 0.15s;
+      white-space: nowrap;
+      line-height: 1.2;
     }
     .trump-btn:hover { border-color: var(--muted); }
     .trump-btn.selected { border-color: #ff9800; background: rgba(255,152,0,0.2); color: #ff9800; }
@@ -438,24 +482,12 @@
     .trump-btn.follow-me.selected { border-style: dashed; }
     .trump-btn:disabled { opacity: 0.3; cursor: not-allowed; }
     .trump-btn:disabled:hover { border-color: var(--border); }
-    .bid-controls {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .bid-amount-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
     .btn {
-      padding: 8px 16px;
-      border-radius: 6px;
+      padding: 5px 12px;
+      border-radius: 5px;
       border: none;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 600;
       transition: all 0.15s;
     }
@@ -469,51 +501,41 @@
     .btn-muted { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
     .btn-muted:hover:not(:disabled) { border-color: var(--muted); color: var(--text); }
     .num-input {
-      width: 64px;
-      padding: 6px 8px;
-      border-radius: 6px;
+      width: 48px;
+      padding: 3px 5px;
+      border-radius: 5px;
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--text);
-      font-size: 16px;
+      font-size: 14px;
       text-align: center;
     }
     .marks-row {
       display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
+      gap: 4px;
+      flex-wrap: nowrap;
     }
     .mark-bid-btn {
-      padding: 6px 12px;
-      border-radius: 6px;
+      padding: 3px 8px;
+      border-radius: 5px;
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--muted);
       cursor: pointer;
-      font-size: 16px;
+      font-size: 13px;
     }
     .mark-bid-btn:hover { border-color: var(--gold); color: var(--gold); }
-    #mark-bids-row { border-left: 1px solid var(--border); padding-left: 8px; margin-left: 2px; }
-    .bid-action-btns {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-left: auto;
-    }
-    .bid-action-btns .btn { width: 100%; }
     .indication-label {
       display: flex;
       align-items: center;
       gap: 5px;
-      font-size: 15px;
+      font-size: 13px;
       color: var(--muted);
       cursor: pointer;
-      padding: 6px 10px;
-      border-radius: 6px;
+      padding: 3px 8px;
+      border-radius: 5px;
       border: 1px solid var(--border);
       white-space: nowrap;
-      border-left: 1px solid var(--border);
-      margin-left: 2px;
       user-select: none;
     }
     .indication-label:has(input:checked) { border-color: var(--gold); color: var(--gold); }
@@ -755,6 +777,41 @@
   <button class="btn btn-muted" id="quit-btn" style="font-size:16px;padding:4px 10px;margin-left:12px;flex-shrink:0">Quit</button>
 </div>
 
+<!-- BID BAR (hidden until it's your turn to bid) -->
+<div class="hidden" id="bid-overlay">
+  <div id="bid-bar">
+    <span id="bid-panel-context" class="bid-bar-context"></span>
+    <div class="bid-bar-sep"></div>
+    <div class="bid-bar-group">
+      <span class="bid-bar-label">Trump Suit</span>
+      <div class="trump-options" id="trump-options"></div>
+    </div>
+    <div class="bid-bar-sep"></div>
+    <div class="bid-bar-group">
+      <span class="bid-bar-label">Bid</span>
+      <button class="btn btn-muted" id="bid-dec">−</button>
+      <input class="num-input" type="number" id="bid-amount" value="60" min="60" max="87" />
+      <button class="btn btn-muted" id="bid-inc">+</button>
+    </div>
+    <div class="bid-bar-sep"></div>
+    <div class="bid-bar-group">
+      <span class="bid-bar-label">Marks</span>
+      <div class="marks-row" id="mark-bids-row"></div>
+    </div>
+    <div class="bid-bar-sep"></div>
+    <label class="indication-label"><input type="checkbox" id="bid-indication"> Indication</label>
+    <div class="bid-bar-sep"></div>
+    <div class="bid-bar-group">
+      <button class="btn btn-danger" id="bid-pass">Pass</button>
+      <button class="btn btn-primary" id="bid-submit">Bid</button>
+    </div>
+  </div>
+  <div style="display:none">
+    <div id="bid-panel-hand"></div>
+    <div id="bid-status-section"><div id="bid-status-list"></div></div>
+  </div>
+</div>
+
 <!-- MAIN -->
 <div id="main">
   <!-- TEAM A TRICKS -->
@@ -803,40 +860,6 @@
     <div id="log-section">
       <h3>Game Log</h3>
       <div id="log-entries"></div>
-    </div>
-  </div>
-</div>
-
-<!-- BID OVERLAY -->
-<div class="overlay hidden" id="bid-overlay">
-  <div class="panel" id="bid-panel">
-    <h2>Your Bid</h2>
-    <p id="bid-panel-context">Current high bid: none</p>
-    <div>
-      <div style="font-size:14px;color:var(--muted);margin-bottom:6px">Your Hand — click either side to group by that number</div>
-      <div id="bid-panel-hand"></div>
-    </div>
-    <div id="bid-status-section" style="display:none">
-      <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Bids So Far</div>
-      <div id="bid-status-list"></div>
-    </div>
-    <div>
-      <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Select Trump Suit</div>
-      <div class="trump-options" id="trump-options"></div>
-    </div>
-    <div>
-      <div style="font-size:16px;color:var(--muted);margin-bottom:6px">Numeric Bid (60–87)</div>
-      <div class="bid-amount-row">
-        <button class="btn btn-muted" id="bid-dec">−</button>
-        <input class="num-input" type="number" id="bid-amount" value="60" min="60" max="87" />
-        <button class="btn btn-muted" id="bid-inc">+</button>
-        <div class="marks-row" id="mark-bids-row"></div>
-        <label class="indication-label"><input type="checkbox" id="bid-indication"> Indication</label>
-        <div class="bid-action-btns">
-          <button class="btn btn-primary" id="bid-submit">Bid</button>
-          <button class="btn btn-danger" id="bid-pass">Pass</button>
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -907,7 +930,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.2';
+const VERSION = 'v1.3';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -2009,13 +2032,9 @@ function showBidPanel() {
     const btn = document.createElement('button');
     btn.className = `trump-btn${i === bidSelectedTrump ? ' selected' : ''}${i === FOLLOW_ME ? ' follow-me' : ''}`;
     if (i !== FOLLOW_ME && !hasPip(i)) btn.disabled = true;
-    if (i === FOLLOW_ME) {
-      btn.textContent = name;
-      btn.style.fontStyle = 'italic';
-    } else {
-      btn.textContent = `${i}\n${name}`;
-    }
-    btn.style.whiteSpace = 'pre';
+    btn.title = name;
+    btn.textContent = i === FOLLOW_ME ? 'FM' : String(i);
+    if (i === FOLLOW_ME) btn.style.fontStyle = 'italic';
     btn.addEventListener('click', () => selectBidTrump(i));
     trumpOpts.appendChild(btn);
   });
