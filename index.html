@@ -289,6 +289,16 @@
       transform: translateY(-6px);
       box-shadow: 0 6px 16px rgba(74,158,255,0.7);
     }
+    .domino.premove {
+      cursor: pointer;
+      border-color: #66aaff;
+      transform: translateY(-5px);
+      box-shadow: 0 5px 14px rgba(74,158,255,0.55);
+    }
+    .domino.premove:hover {
+      transform: translateY(-7px);
+      box-shadow: 0 8px 20px rgba(74,158,255,0.75);
+    }
     .domino.dimmed { opacity: 0.45; }
     .domino.trump-marker { border-color: #ff9800; }
     .domino.kitty-size { width: 36px; height: 68px; border-radius: 5px; border-width: 2px; }
@@ -1029,6 +1039,7 @@ function dispIdx(logicalIdx) {
 let G = {};
 let turnDotTimers = {};   // keyed by player index (includes NET.myIdx)
 let turnDotVisible = new Set(); // players whose dot delay has elapsed
+let preMove = null; // domino pre-selected by human to auto-play on their next turn
 
 function initGame() {
   G = {
@@ -1307,6 +1318,7 @@ function startRound() {
   G.teamTrickPts = [0, 0];
   G.awaitingPlayer = null;
   G.trickInProgress = false;
+  preMove = null;
 
   deal();
   const defaultPip = bestDefaultSortPip(G.hands[NET.myIdx]);
@@ -1490,9 +1502,28 @@ function advanceTrick() {
   renderPhaseDisplay();
 
   if (playerIdx === NET.myIdx) {
-    G.awaitingPlayer = NET.myIdx;
-    renderPlayerAreas();
-    renderHumanHand();
+    const myHand = G.hands[NET.myIdx];
+    const validPreMove = preMove && myHand.some(d => dominoId(d) === dominoId(preMove))
+      && canPlay(preMove, G.currentTrick, myHand, G.trump);
+    if (validPreMove) {
+      const moveToPlay = preMove;
+      preMove = null;
+      G.awaitingPlayer = null;
+      renderPlayerAreas();
+      renderHumanHand();
+      setTimeout(() => {
+        if (NET.mode === 'client') {
+          sendToHost({ type: 'play', domino: moveToPlay });
+        } else {
+          playDomino(NET.myIdx, moveToPlay);
+        }
+      }, 0);
+    } else {
+      preMove = null; // clear invalid pre-move
+      G.awaitingPlayer = NET.myIdx;
+      renderPlayerAreas();
+      renderHumanHand();
+    }
   } else if (NET.playerTypes[playerIdx] === 'remote') {
     G.awaitingPlayer = playerIdx;
     renderPlayerAreas();
@@ -1838,7 +1869,8 @@ function renderPlayerAreas() {
   // Local human hint + bid badge
   document.getElementById('human-hint').textContent =
     G.awaitingPlayer === NET.myIdx ? 'Your turn — click a highlighted domino' :
-    G.phase === 'play' ? 'Waiting...' : '';
+    G.phase === 'play' && preMove ? 'Pre-selected — will auto-play when your turn' :
+    G.phase === 'play' ? 'Waiting… click any domino to pre-select' : '';
 
   const p0Badge = document.getElementById('human-bid-badge');
   if (G.phase === 'bid' && G.playerBids) {
@@ -1893,6 +1925,12 @@ function renderHumanHand() {
   container.innerHTML = '';
   const myHand = G.hands[NET.myIdx];
   const isMyTurn = G.awaitingPlayer === NET.myIdx;
+  const canPreMove = !isMyTurn && G.phase === 'play';
+
+  // Validate preMove is still in hand; clear it if not
+  if (preMove && !myHand.some(d => dominoId(d) === dominoId(preMove))) {
+    preMove = null;
+  }
 
   let prevGroup = null;
   myHand.forEach(d => {
@@ -1908,21 +1946,35 @@ function renderHumanHand() {
     const isLegal = isMyTurn && canPlay(d, G.currentTrick, myHand, G.trump);
     const isDimmed = isMyTurn && !isLegal;
     const isTrumpD = G.trump !== null && isTrump(d, G.trump);
+    const isPreSelected = canPreMove && preMove && dominoId(d) === dominoId(preMove);
     const el = buildDomino(d, isLegal, isDimmed, isTrumpD);
+
+    if (isPreSelected) el.classList.add('premove');
+
     if (isLegal) {
       el.addEventListener('click', () => {
         if (G.awaitingPlayer !== NET.myIdx) return;
         if (!canPlay(d, G.currentTrick, myHand, G.trump)) return;
 
         if (NET.mode === 'client') {
+          preMove = null;
           sendToHost({ type: 'play', domino: d });
           G.awaitingPlayer = null;
           renderHumanHand();
           return;
         }
 
+        preMove = null;
         G.awaitingPlayer = null;
         playDomino(NET.myIdx, d);
+      });
+    } else if (canPreMove) {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => {
+        if (G.phase !== 'play' || G.awaitingPlayer === NET.myIdx) return;
+        preMove = (preMove && dominoId(preMove) === dominoId(d)) ? null : d;
+        renderHumanHand();
+        renderPlayerAreas(); // refresh hint text
       });
     }
     if (G.phase === 'bid') {
@@ -2612,6 +2664,18 @@ function handleHostMessage(data) {
           showBidPanel();
         } else if (G.phase === 'kitty' && G.bidWinner === NET.myIdx && G.awaitingPlayer === NET.myIdx) {
           showKittyPanel();
+        } else if (G.phase === 'play' && G.awaitingPlayer === NET.myIdx) {
+          // Auto-play pre-move if valid
+          const myHand = G.hands[NET.myIdx];
+          const validPreMove = preMove && myHand.some(d => dominoId(d) === dominoId(preMove))
+            && canPlay(preMove, G.currentTrick, myHand, G.trump);
+          if (validPreMove) {
+            const moveToPlay = preMove;
+            preMove = null;
+            G.awaitingPlayer = null;
+            renderHumanHand();
+            setTimeout(() => sendToHost({ type: 'play', domino: moveToPlay }), 0);
+          }
         }
       }
       // play turn is handled by renderHumanHand showing highlighted tiles
