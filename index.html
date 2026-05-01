@@ -831,6 +831,81 @@
       #human-hand .domino.vertical .divider  { height: 1px; margin: 0 3px; }
     }
   </style>
+  <style>
+    /* ── VIDEO PANEL ── */
+    #video-panel {
+      display: none;
+      position: fixed;
+      bottom: 148px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 60;
+      background: rgba(10, 30, 18, 0.93);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px 6px;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      max-width: 92vw;
+    }
+    #video-panel.visible { display: flex; }
+    #video-tiles {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .video-tile {
+      position: relative;
+      width: 120px;
+      height: 90px;
+      background: #050e08;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .video-tile video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .video-tile-self video { transform: scaleX(-1); }
+    .video-tile-name {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 2px 4px;
+      background: rgba(0,0,0,0.65);
+      font-size: 10px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+    }
+    .video-tile-nostream {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: var(--muted);
+    }
+    .video-controls {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    @media (max-width: 600px) {
+      #video-panel { bottom: 110px; }
+      .video-tile { width: 88px; height: 66px; }
+    }
+  </style>
 </head>
 <body>
 
@@ -847,7 +922,8 @@
     <span style="font-size:16px;color:var(--muted)" id="team-b-players">(P1, P3, P5)</span>
     <span class="team-label teamB-label">Team B</span>
   </div>
-  <button class="btn btn-muted" id="quit-btn" style="font-size:16px;padding:4px 10px;margin-left:12px;flex-shrink:0">Quit</button>
+  <button class="btn btn-muted" id="video-toggle-btn" onclick="toggleVideo()" style="display:none;font-size:14px;padding:4px 9px;margin-left:8px;flex-shrink:0">&#x1F4F7; Video</button>
+  <button class="btn btn-muted" id="quit-btn" style="font-size:16px;padding:4px 10px;margin-left:8px;flex-shrink:0">Quit</button>
 </div>
 
 <!-- BID BAR (hidden until it's your turn to bid) -->
@@ -881,6 +957,16 @@
   </div>
   <div id="bid-summary-view">
     <div id="bid-summary-content"></div>
+  </div>
+</div>
+
+<!-- VIDEO PANEL -->
+<div id="video-panel">
+  <div id="video-tiles"></div>
+  <div class="video-controls">
+    <button class="btn btn-muted" id="video-mic-btn" onclick="toggleMic()" style="font-size:12px;padding:3px 8px">&#x1F3A4; Mic</button>
+    <button class="btn btn-muted" id="video-cam-btn" onclick="toggleCam()" style="font-size:12px;padding:3px 8px">&#x1F4F7; Cam</button>
+    <button class="btn btn-danger" onclick="stopVideo()" style="font-size:12px;padding:3px 8px">Stop</button>
   </div>
 </div>
 
@@ -1069,6 +1155,13 @@ let NET = {
   lastPong: {},          // seatIdx → timestamp of last pong received (host only)
   clientWatchdog: null,  // client only: interval id for detecting host silence
   lastHostMsg: 0,        // client only: timestamp of last message from host
+  // Video/audio
+  mediaStream: null,
+  mediaCalls: {},
+  remoteStreams: {},
+  videoActive: false,
+  micMuted: false,
+  camOff: false,
 };
 
 // Map logical player index to display position (0 = bottom / local human)
@@ -2797,6 +2890,9 @@ function showLobby() {
 
 function hideLobby() {
   document.getElementById('lobby-overlay').classList.add('hidden');
+  if (NET.mode === 'host' || NET.mode === 'client') {
+    document.getElementById('video-toggle-btn').style.display = '';
+  }
 }
 
 function showMainMenu() {
@@ -2807,7 +2903,194 @@ function hideMainMenu() {
   document.getElementById('menu-overlay').classList.add('hidden');
 }
 
+// ─────────────────────────────────────────────
+// VIDEO / MEDIA
+// ─────────────────────────────────────────────
+
+function cleanupMedia() {
+  if (NET.mediaStream) {
+    NET.mediaStream.getTracks().forEach(t => t.stop());
+    NET.mediaStream = null;
+  }
+  Object.values(NET.mediaCalls).forEach(c => { try { c.close(); } catch (_) {} });
+  NET.mediaCalls = {};
+  NET.remoteStreams = {};
+  NET.videoActive = false;
+  NET.micMuted = false;
+  NET.camOff = false;
+  const panel = document.getElementById('video-panel');
+  if (panel) panel.classList.remove('visible');
+  const tiles = document.getElementById('video-tiles');
+  if (tiles) tiles.innerHTML = '';
+  const btn = document.getElementById('video-toggle-btn');
+  if (btn) { btn.textContent = '\u{1F4F7} Video'; btn.style.display = 'none'; btn.classList.remove('btn-danger'); }
+  const micBtn = document.getElementById('video-mic-btn');
+  if (micBtn) { micBtn.textContent = '\u{1F3A4} Mic'; micBtn.classList.remove('btn-danger'); }
+  const camBtn = document.getElementById('video-cam-btn');
+  if (camBtn) { camBtn.textContent = '\u{1F4F7} Cam'; camBtn.classList.remove('btn-danger'); }
+}
+
+async function startVideo() {
+  if (NET.videoActive) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    NET.mediaStream = stream;
+    NET.videoActive = true;
+    NET.remoteStreams[NET.myIdx] = stream;
+    document.getElementById('video-panel').classList.add('visible');
+    document.getElementById('video-toggle-btn').textContent = '\u{1F4F7} On';
+    document.getElementById('video-toggle-btn').classList.add('btn-danger');
+    renderVideoGrid();
+
+    if (NET.mode === 'host') {
+      Object.entries(NET.connections).forEach(([seatStr, conn]) => {
+        if (!conn.open) return;
+        const call = NET.peer.call(conn.peer, stream, { metadata: { streamOwner: NET.myIdx } });
+        NET.mediaCalls[`host-to-${seatStr}`] = call;
+      });
+    } else if (NET.mode === 'client') {
+      const call = NET.peer.call('ee88-' + NET.roomCode, stream, { metadata: { seatIdx: NET.myIdx } });
+      NET.mediaCalls['to-host'] = call;
+    }
+  } catch (err) {
+    alert('Could not access camera/microphone: ' + err.message);
+  }
+}
+
+function stopVideo() {
+  cleanupMedia();
+  const btn = document.getElementById('video-toggle-btn');
+  if (btn && NET.mode !== 'local') btn.style.display = '';
+}
+
+function toggleVideo() {
+  if (NET.videoActive) { stopVideo(); } else { startVideo(); }
+}
+
+function toggleMic() {
+  if (!NET.mediaStream) return;
+  NET.micMuted = !NET.micMuted;
+  NET.mediaStream.getAudioTracks().forEach(t => { t.enabled = !NET.micMuted; });
+  const btn = document.getElementById('video-mic-btn');
+  btn.textContent = NET.micMuted ? '\u{1F507} Mic' : '\u{1F3A4} Mic';
+  btn.classList.toggle('btn-danger', NET.micMuted);
+}
+
+function toggleCam() {
+  if (!NET.mediaStream) return;
+  NET.camOff = !NET.camOff;
+  NET.mediaStream.getVideoTracks().forEach(t => { t.enabled = !NET.camOff; });
+  const btn = document.getElementById('video-cam-btn');
+  btn.textContent = NET.camOff ? '\u{1F6AB} Cam' : '\u{1F4F7} Cam';
+  btn.classList.toggle('btn-danger', NET.camOff);
+}
+
+function renderVideoGrid() {
+  const container = document.getElementById('video-tiles');
+  if (!container) return;
+
+  const activeSeatOrder = [];
+  for (let i = 0; i < 6; i++) {
+    if (NET.remoteStreams[i] !== undefined && NET.remoteStreams[i] !== null) activeSeatOrder.push(i);
+  }
+  activeSeatOrder.sort((a, b) => {
+    if (a === NET.myIdx) return -1;
+    if (b === NET.myIdx) return 1;
+    return a - b;
+  });
+
+  activeSeatOrder.forEach(seat => {
+    const stream = NET.remoteStreams[seat];
+    const tileId = `vtile-${seat}`;
+    let tile = document.getElementById(tileId);
+
+    if (!tile) {
+      tile = document.createElement('div');
+      tile.id = tileId;
+      tile.className = 'video-tile' + (seat === NET.myIdx ? ' video-tile-self' : '');
+      const video = document.createElement('video');
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = (seat === NET.myIdx);
+      tile.appendChild(video);
+      const nameEl = document.createElement('div');
+      nameEl.className = 'video-tile-name';
+      tile.appendChild(nameEl);
+      container.appendChild(tile);
+    }
+
+    const video = tile.querySelector('video');
+    if (video.srcObject !== stream) video.srcObject = stream;
+
+    const nameEl = tile.querySelector('.video-tile-name');
+    const rawName = seat === NET.myIdx ? (NET.myName || 'You') : (NET.playerNames[seat] || `P${seat}`);
+    nameEl.textContent = rawName;
+    nameEl.style.color = TEAM[seat] === 0 ? 'var(--teamA)' : 'var(--teamB)';
+  });
+
+  // Remove stale tiles
+  container.querySelectorAll('.video-tile').forEach(tile => {
+    const seat = parseInt(tile.id.replace('vtile-', ''));
+    if (!activeSeatOrder.includes(seat)) tile.remove();
+  });
+}
+
+function setupMediaCallHandler() {
+  if (!NET.peer) return;
+
+  NET.peer.on('call', (call) => {
+    if (NET.mode === 'host') {
+      const seatIdx = parseInt(
+        Object.entries(NET.connections).find(([, c]) => c.peer === call.peer)?.[0] ?? '-1'
+      );
+      if (seatIdx < 0) { call.close(); return; }
+
+      call.answer(new MediaStream());
+      NET.mediaCalls[`in-from-${seatIdx}`] = call;
+
+      call.on('stream', (remote) => {
+        if (!remote.getTracks().length) return;
+        NET.remoteStreams[seatIdx] = remote;
+        document.getElementById('video-panel').classList.add('visible');
+        renderVideoGrid();
+
+        // Relay this stream to all other connected clients
+        Object.entries(NET.connections).forEach(([s, conn]) => {
+          const other = parseInt(s);
+          if (other === seatIdx || !conn.open) return;
+          const fwd = NET.peer.call(conn.peer, remote, { metadata: { streamOwner: seatIdx } });
+          NET.mediaCalls[`fwd-${seatIdx}-to-${other}`] = fwd;
+        });
+
+        // Send all existing streams to the newly joined video participant
+        Object.entries(NET.remoteStreams).forEach(([s, existing]) => {
+          const owner = parseInt(s);
+          if (owner === seatIdx) return;
+          const fwd = NET.peer.call(call.peer, existing, { metadata: { streamOwner: owner } });
+          NET.mediaCalls[`fwd-${owner}-to-${seatIdx}`] = fwd;
+        });
+      });
+
+    } else {
+      // Client receiving a stream forwarded by the host
+      const streamOwner = call.metadata?.streamOwner;
+      if (streamOwner === undefined) { call.close(); return; }
+
+      call.answer(new MediaStream());
+      NET.mediaCalls[`in-stream-${streamOwner}`] = call;
+
+      call.on('stream', (remote) => {
+        if (!remote.getTracks().length) return;
+        NET.remoteStreams[streamOwner] = remote;
+        document.getElementById('video-panel').classList.add('visible');
+        renderVideoGrid();
+      });
+    }
+  });
+}
+
 function quitToMenu() {
+  cleanupMedia();
   if (NET.peer) { NET.peer.destroy(); NET.peer = null; }
   Object.values(NET.dropTimers).forEach(clearTimeout);
   Object.values(NET.heartbeatTimers).forEach(clearInterval);
@@ -3255,6 +3538,7 @@ function renderReconnectPrompt(code) {
 
 function triggerClientDisconnect() {
   if (NET.mode !== 'client') return;
+  cleanupMedia();
   if (NET.clientWatchdog) { clearInterval(NET.clientWatchdog); NET.clientWatchdog = null; }
   const savedCode = NET.roomCode;
   NET.mode = 'local';
@@ -3275,6 +3559,14 @@ function markPlayerDisconnected(idx) {
     try { NET.connections[idx].close(); } catch (_) {}
     delete NET.connections[idx];
   }
+  // Clean up any video stream for this player
+  if (NET.remoteStreams[idx]) {
+    delete NET.remoteStreams[idx];
+    renderVideoGrid();
+  }
+  const inCall = NET.mediaCalls[`in-from-${idx}`];
+  if (inCall) { try { inCall.close(); } catch (_) {} delete NET.mediaCalls[`in-from-${idx}`]; }
+
   const name = NET.playerNames[idx] || `Player ${idx}`;
   if (!NET.droppedNames[idx]) {
     NET.droppedNames[idx] = name;
@@ -3312,6 +3604,7 @@ function createRoom() {
   });
 
   NET.peer.on('open', () => {
+    setupMediaCallHandler();
     renderLobby();
   });
 
@@ -3402,6 +3695,7 @@ function joinRoom(code, statusEl) {
   });
 
   NET.peer.on('open', () => {
+    setupMediaCallHandler();
     NET.hostConn = NET.peer.connect('ee88-' + code);
 
     NET.hostConn.on('open', () => {
