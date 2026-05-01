@@ -2426,30 +2426,35 @@ function renderHostControls() {
 function hostRedoBid(playerIdx) {
   const name = playerIdx === NET.myIdx ? 'you' : (NET.playerNames[playerIdx] || `P${playerIdx}`);
   const displayName = playerIdx === NET.myIdx ? 'You' : (NET.playerNames[playerIdx] || `P${playerIdx}`);
-  if (!confirm(`Allow ${displayName} to re-bid?\n\nTheir current bid will be cleared and it will be their turn to bid again.`)) return;
+  if (!confirm(`Allow ${displayName} to re-bid?\n\nTheir bid and all bids placed after theirs will be cleared.`)) return;
 
-  const wasHighBidder = G.highBid && G.highBid.player === playerIdx;
-  G.bidActed[playerIdx] = false;
-  G.bidPassed[playerIdx] = false;
-  G.playerBids[playerIdx] = null;
-
-  if (wasHighBidder) {
-    G.highBid = null;
-    G.playerBids.forEach((bid, i) => {
-      if (!bid || bid === 'pass') return;
-      if (!G.highBid) {
-        G.highBid = { player: i, ...bid };
-      } else {
-        const better = bid.isMarks
-          ? (!G.highBid.isMarks || bid.amount > G.highBid.amount)
-          : (!G.highBid.isMarks && bid.amount > G.highBid.amount);
-        if (better) G.highBid = { player: i, ...bid };
-      }
-    });
+  // Clear playerIdx's bid and all players who bid after them in rotation order
+  const getPos = (idx) => (idx - G.bidStartIdx + 6) % 6;
+  const playerPos = getPos(playerIdx);
+  for (let p = 0; p < 6; p++) {
+    if (getPos(p) >= playerPos) {
+      G.bidActed[p] = false;
+      G.bidPassed[p] = false;
+      G.playerBids[p] = null;
+    }
   }
 
+  // Recompute highBid from remaining bids
+  G.highBid = null;
+  G.playerBids.forEach((bid, i) => {
+    if (!bid || bid === 'pass') return;
+    if (!G.highBid) {
+      G.highBid = { player: i, ...bid };
+    } else {
+      const better = bid.isMarks
+        ? (!G.highBid.isMarks || bid.amount > G.highBid.amount)
+        : (!G.highBid.isMarks && bid.amount > G.highBid.amount);
+      if (better) G.highBid = { player: i, ...bid };
+    }
+  });
+
   hideBidPanel();
-  log(`Host allows ${name} to re-bid.`, 'highlight');
+  log(`Host allows ${name} to re-bid. All bids after ${name} have been cleared.`, 'highlight');
   G.currentBidder = playerIdx;
   renderAll();
   broadcastState();
