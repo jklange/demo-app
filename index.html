@@ -2050,7 +2050,7 @@ function renderHumanHand() {
     prevGroup = g;
 
     const wouldBeLegal = canPlay(d, G.currentTrick, myHand, G.trump);
-    const isLegal = isMyTurn && wouldBeLegal;
+    const isLegal = isMyTurn && wouldBeLegal && G.phase === 'play';
     const isHighlighted = (isMyTurn || canPreMove) && wouldBeLegal;
     const isDimmed = (isMyTurn || canPreMove) && !wouldBeLegal;
     const isTrumpD = G.trump !== null && isTrump(d, G.trump);
