@@ -481,6 +481,16 @@
       gap: 3px;
       flex-wrap: nowrap;
     }
+    #bid-summary-view {
+      padding: 6px 14px;
+    }
+    .bid-summary-header {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gold);
+      margin-bottom: 4px;
+      white-space: nowrap;
+    }
     .bid-status-row {
       display: flex;
       justify-content: space-between;
@@ -839,6 +849,9 @@
       <button class="btn btn-danger" id="bid-pass">Pass</button>
       <button class="btn btn-primary" id="bid-submit">Bid</button>
     </div>
+  </div>
+  <div id="bid-summary-view" style="display:none">
+    <div id="bid-summary-content"></div>
   </div>
   <div style="display:none">
     <div id="bid-panel-hand"></div>
@@ -1405,7 +1418,6 @@ function nextBidder() {
 }
 
 function finishBidding() {
-  hideBidPanel();
   if (!G.highBid) {
     G.highBid = { player: G.bidStartIdx, isMarks: false, amount: 60, trump: 0 };
   }
@@ -1414,23 +1426,30 @@ function finishBidding() {
   const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : `${G.highBid.amount}${G.highBid.indication ? ' [IND]' : ''}`;
   const trumpDesc = G.trump === FOLLOW_ME ? 'Follow Me (no trump)' : TRUMP_NAMES[G.trump];
   log(`Bidding over. Player ${G.bidWinner} wins at ${bidStr} — ${trumpDesc}.`, 'good');
-  G.phase = 'kitty';
 
-  if (G.bidWinner === NET.myIdx) {
-    broadcastState();
-    showKittyPanel();
-  } else if (NET.playerTypes[G.bidWinner] === 'remote') {
-    G.awaitingPlayer = G.bidWinner;
-    broadcastState(); // client sees phase='kitty' and awaitingPlayer===myIdx → shows kitty panel
-  } else {
-    setTimeout(() => {
-      aiKittyChoice(G.bidWinner);
-      log(`Player ${G.bidWinner} takes kitty and leads.`);
-      broadcastState();
-      startPlay();
-    }, aiDelay());
-  }
+  showBidSummary();
   renderAll();
+
+  setTimeout(() => {
+    hideBidPanel();
+    G.phase = 'kitty';
+
+    if (G.bidWinner === NET.myIdx) {
+      broadcastState();
+      showKittyPanel();
+    } else if (NET.playerTypes[G.bidWinner] === 'remote') {
+      G.awaitingPlayer = G.bidWinner;
+      broadcastState(); // client sees phase='kitty' and awaitingPlayer===myIdx → shows kitty panel
+    } else {
+      setTimeout(() => {
+        aiKittyChoice(G.bidWinner);
+        log(`Player ${G.bidWinner} takes kitty and leads.`);
+        broadcastState();
+        startPlay();
+      }, aiDelay());
+    }
+    renderAll();
+  }, 5000);
 }
 
 function sortHand(hand, trump) {
@@ -2276,8 +2295,49 @@ function renderBidPanelHand() {
   });
 }
 
+function showBidSummary() {
+  const overlay = document.getElementById('bid-overlay');
+  overlay.classList.remove('hidden');
+  document.getElementById('bid-bar').style.display = 'none';
+  const summaryView = document.getElementById('bid-summary-view');
+  summaryView.style.display = '';
+
+  const winnerName = G.bidWinner === NET.myIdx ? 'You' : (NET.playerNames[G.bidWinner] || `P${G.bidWinner}`);
+  const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : `${G.highBid.amount}${G.highBid.indication ? ' [IND]' : ''}`;
+  const trumpName = G.trump === FOLLOW_ME ? 'Follow Me' : TRUMP_NAMES[G.trump];
+
+  const content = document.getElementById('bid-summary-content');
+  content.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'bid-summary-header';
+  header.textContent = `Bidding complete — ${winnerName} wins: ${bidStr} in ${trumpName}`;
+  content.appendChild(header);
+
+  if (G.playerBids) {
+    G.playerBids.forEach((bid, i) => {
+      if (bid === null) return;
+      const row = document.createElement('div');
+      row.className = 'bid-status-row';
+      const nameEl = document.createElement('span');
+      const teamClass = TEAM[i] === 0 ? 'teamA' : 'teamB';
+      nameEl.className = `bid-status-name ${teamClass}`;
+      nameEl.textContent = i === NET.myIdx ? 'You' : (NET.playerNames[i] || `P${i}`);
+      const valEl = document.createElement('span');
+      valEl.className = `bid-status-val ${teamClass}`;
+      valEl.textContent = bid === 'pass' ? 'Pass'
+        : `${bid.isMarks ? bid.amount + ' mark(s)' : bid.amount}${bid.indication ? ' [IND]' : ''} in ${TRUMP_NAMES[bid.trump]}`;
+      row.appendChild(nameEl);
+      row.appendChild(valEl);
+      content.appendChild(row);
+    });
+  }
+}
+
 function hideBidPanel() {
   document.getElementById('bid-overlay').classList.add('hidden');
+  document.getElementById('bid-bar').style.display = '';
+  document.getElementById('bid-summary-view').style.display = 'none';
 }
 
 // kitty
@@ -2460,10 +2520,13 @@ function renderHostControls() {
   }
   el.style.display = '';
 
+  const isMultiplayer = NET.mode !== 'local';
+  document.getElementById('host-restart-btn').style.display = isMultiplayer ? '' : 'none';
+
   const redoList = document.getElementById('host-redo-list');
   redoList.innerHTML = '';
 
-  if (G.phase === 'bid' && G.playerBids) {
+  if (isMultiplayer && G.phase === 'bid' && G.playerBids) {
     G.playerBids.forEach((bid, i) => {
       if (bid === null) return;
       const row = document.createElement('div');
