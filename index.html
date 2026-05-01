@@ -1893,8 +1893,12 @@ function renderBidInfo() {
         .concat(G.currentTrick.map(p => dominoId(p.domino)))
     );
     const allTrumps = createDeck().filter(d => isTrump(d, G.trump));
-    const unplayed = allTrumps.filter(d => !playedTrumpIds.has(dominoId(d))).length;
-    unplayedTrumpsEl.textContent = `Trumps unplayed: ${unplayed}`;
+    const unplayedTrumps = allTrumps.filter(d => !playedTrumpIds.has(dominoId(d)));
+    const unplayed = unplayedTrumps.length;
+    unplayedTrumps.sort((a, b) => trumpRank(b, G.trump) - trumpRank(a, G.trump));
+    const highest = unplayedTrumps[0];
+    const highestStr = highest ? `${highest.h}-${highest.l}` : '—';
+    unplayedTrumpsEl.innerHTML = `Trumps unplayed: ${unplayed}<br>Highest trump: ${highestStr}`;
     unplayedTrumpsEl.style.display = '';
   } else {
     unplayedTrumpsEl.style.display = 'none';
