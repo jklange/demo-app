@@ -430,13 +430,13 @@
       50%       { border-color: #6fcf8a; }
     }
     #bid-overlay {
-      animation: bid-pulse 2s ease-in-out infinite;
       background: #1f4829;
       border: 2px solid #3a7a4a;
       box-shadow: 0 2px 12px rgba(0,0,0,0.5);
       flex-shrink: 0;
     }
     #bid-overlay.hidden { display: none; }
+    #bid-overlay.pulsing { animation: bid-pulse 2s ease-in-out infinite; }
     #bid-bar {
       display: flex;
       align-items: center;
@@ -2102,6 +2102,7 @@ function buildHalf(val) {
 function showBidPanel() {
   const overlay = document.getElementById('bid-overlay');
   overlay.classList.remove('hidden');
+  overlay.classList.add('pulsing');
   document.getElementById('bid-bar').style.display = '';
 
   const hb = G.highBid;
@@ -2311,13 +2312,15 @@ function updateLiveBidList(winnerIdx = null) {
 
 function showBidSummary() {
   const overlay = document.getElementById('bid-overlay');
-  overlay.classList.remove('hidden');
+  overlay.classList.remove('hidden', 'pulsing');
   document.getElementById('bid-bar').style.display = 'none';
   updateLiveBidList(G.bidWinner);
 }
 
 function hideBidPanel() {
-  document.getElementById('bid-overlay').classList.add('hidden');
+  const overlay = document.getElementById('bid-overlay');
+  overlay.classList.add('hidden');
+  overlay.classList.remove('pulsing');
   document.getElementById('bid-bar').style.display = '';
   document.getElementById('bid-summary-content').innerHTML = '';
 }
