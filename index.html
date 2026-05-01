@@ -1485,7 +1485,32 @@ function advanceTrick() {
   }
 }
 
+function playDominoSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.12, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.008));
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    // bandpass around 2–5 kHz to give that hard clack character
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 3200;
+    bp.Q.value = 0.7;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(1.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09);
+    src.connect(bp);
+    bp.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+    src.onended = () => ctx.close();
+  } catch (_) {}
+}
+
 function playDomino(playerIdx, domino) {
+  playDominoSound();
   G.hands[playerIdx] = G.hands[playerIdx].filter(d => dominoId(d) !== dominoId(domino));
   G.currentTrick.push({ player: playerIdx, domino });
   log(`Player ${playerIdx} plays ${domino.h}-${domino.l}.`);
