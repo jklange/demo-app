@@ -197,8 +197,9 @@
       font-size: 32px;
       padding: 2px 6px;
       border-radius: 4px;
-      background: rgba(0,0,0,0.5);
+      background: #000;
       color: var(--gold);
+      border: 2px solid var(--gold);
       white-space: nowrap;
     }
 
@@ -1222,6 +1223,12 @@ function validNumericBid(highBid) {
   return highBid.amount + 1;
 }
 
+function formatBidLabel(bid) {
+  if (!bid) return null;
+  if (bid === 'pass') return 'Pass';
+  return bid.isMarks ? `${bid.amount}mk` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}`;
+}
+
 function aiChooseBid(playerIdx) {
   const hand = G.hands[playerIdx];
   const highBid = G.highBid;
@@ -1874,6 +1881,16 @@ function renderPlayerAreas() {
     }
     area.appendChild(label);
 
+    if (G.phase === 'bid' && G.playerBids) {
+      const bidText = formatBidLabel(G.playerBids[p]);
+      if (bidText) {
+        const badge = document.createElement('div');
+        badge.className = 'bid-badge';
+        badge.textContent = bidText;
+        area.appendChild(badge);
+      }
+    }
+
     updateTurnDot(p, isActive);
     if (isActive && turnDotVisible.has(p)) {
       const dot = document.createElement('div');
@@ -1901,7 +1918,14 @@ function renderPlayerAreas() {
     G.phase === 'play' && G.currentTrick.length > 0 ? 'Waiting… click any domino to pre-select' :
     G.phase === 'play' ? 'Waiting for lead…' : '';
 
-  document.getElementById('human-bid-badge').style.display = 'none';
+  const humanBidBadge = document.getElementById('human-bid-badge');
+  const humanBidText = (G.phase === 'bid' && G.playerBids) ? formatBidLabel(G.playerBids[NET.myIdx]) : null;
+  if (humanBidText) {
+    humanBidBadge.textContent = humanBidText;
+    humanBidBadge.style.display = '';
+  } else {
+    humanBidBadge.style.display = 'none';
+  }
 }
 
 function renderTrickArea() {
