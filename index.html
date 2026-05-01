@@ -425,8 +425,12 @@
     .panel p { font-size: 16px; color: var(--muted); line-height: 1.5; }
 
     /* bid bar */
+    @keyframes bid-pulse {
+      0%, 100% { background: #1f4829; border-bottom-color: #2a5e38; }
+      50%       { background: #3a7a4a; border-bottom-color: #4a9a5a; }
+    }
     #bid-overlay {
-      background: #2a5e38;
+      animation: bid-pulse 2s ease-in-out infinite;
       border-bottom: 2px solid #3a7a4a;
       box-shadow: 0 2px 12px rgba(0,0,0,0.5);
       flex-shrink: 0;
@@ -2129,7 +2133,9 @@ function showBidPanel() {
   trumpOpts.innerHTML = '';
   const myHand = G.hands[NET.myIdx];
   const hasPip = i => i === FOLLOW_ME || myHand.some(d => d.h === i || d.l === i);
-  if (!hasPip(bidSelectedTrump)) {
+  if (G.handSortPip !== null && hasPip(G.handSortPip)) {
+    bidSelectedTrump = G.handSortPip;
+  } else if (!hasPip(bidSelectedTrump)) {
     bidSelectedTrump = [0,1,2,3,4,5,6].find(i => hasPip(i)) ?? FOLLOW_ME;
   }
   TRUMP_NAMES.forEach((name, i) => {
