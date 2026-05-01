@@ -937,7 +937,7 @@ let NET = {
   roomCode: '',
   // 'human' = local human, 'ai' = AI, 'remote' = remote human, 'open' = waiting for human
   playerTypes: ['human', 'ai', 'ai', 'ai', 'ai', 'ai'],
-  playerNames: ['You', 'P1', 'P2', 'P3', 'P4', 'P5'],
+  playerNames: ['', 'P1', 'P2', 'P3', 'P4', 'P5'],
   myName: '',         // local player's chosen display name (clients)
   gameStarted: false,
   dropTimers: {},        // seatIdx → timer (unused, kept for cleanup compatibility)
@@ -2476,7 +2476,7 @@ function quitToMenu() {
   NET.hostConn = null;
   NET.roomCode = '';
   NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-  NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
   NET.myName = '';
   NET.gameStarted = false;
   NET.dropTimers = {};
@@ -2643,12 +2643,12 @@ function renderLobby() {
         status.className = 'seat-status you';
         const nameInput = document.createElement('input');
         nameInput.type = 'text';
-        nameInput.value = NET.playerNames[0] === 'You' ? '' : NET.playerNames[0];
+        nameInput.value = NET.playerNames[0];
         nameInput.placeholder = 'Your name (host)';
         nameInput.maxLength = 20;
         nameInput.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--gold);color:var(--gold);font-weight:600;font-size:inherit;font-family:inherit;width:150px;outline:none;padding:0 2px;';
         nameInput.oninput = () => {
-          NET.playerNames[0] = nameInput.value.trim() || 'You';
+          NET.playerNames[0] = nameInput.value.trim();
         };
         status.appendChild(nameInput);
       } else if (NET.playerTypes[i] === 'remote') {
@@ -2704,7 +2704,7 @@ function renderLobby() {
       NET.myIdx = 0;
       NET.connections = {};
       NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-      NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+      NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
       NET.roomCode = '';
       NET.peer = null;
       NET.gameStarted = false;
@@ -2783,7 +2783,7 @@ function renderLobby() {
       NET.peer = null;
       NET.roomCode = '';
       NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-      NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+      NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
       hideLobby();
       showMainMenu();
     };
@@ -2902,7 +2902,7 @@ function renderReconnectPrompt(code) {
   offlineBtn.className = 'btn btn-muted';
   offlineBtn.onclick = () => {
     NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-    NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
     NET.roomCode = '';
     hideLobby();
     showMainMenu();
@@ -2949,7 +2949,7 @@ function createRoom() {
   NET.mode = 'host';
   NET.myIdx = 0;
   NET.playerTypes = ['human', 'open', 'open', 'open', 'open', 'open'];
-  NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
   NET.connections = {};
 
   const statusEl = document.createElement('div');
@@ -3173,7 +3173,7 @@ document.getElementById('menu-singleplayer').addEventListener('click', () => {
   NET.mode = 'local';
   NET.myIdx = 0;
   NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-  NET.playerNames = ['You', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
   initGame();
 });
 
