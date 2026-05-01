@@ -489,43 +489,50 @@
       font-size: 13px;
       font-weight: 600;
       color: var(--gold);
-      margin-bottom: 4px;
-      white-space: nowrap;
+      margin-bottom: 8px;
+      text-align: center;
     }
-    .bid-status-row {
+    .bid-summary-final {
       display: flex;
-      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .bid-summary-card {
+      display: flex;
+      flex-direction: column;
       align-items: center;
-      padding: 4px 6px;
-      font-size: 15px;
-      border-bottom: 1px solid var(--border);
-      border-radius: 4px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      min-width: 72px;
+      gap: 2px;
     }
-    .bid-status-row:last-child { border-bottom: none; }
-    .bid-status-row.bid-winner-row {
+    .bid-summary-card.bid-winner-card {
       background: rgba(255, 200, 0, 0.15);
-      border: 1px solid rgba(255, 200, 0, 0.4);
-      border-radius: 5px;
-      padding: 5px 8px;
+      border: 2px solid rgba(255, 200, 0, 0.6);
+      padding: 5px 11px;
     }
-    .bid-winner-label {
+    .bid-summary-card .card-name {
       font-size: 12px;
-      font-weight: 700;
-      color: var(--gold);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-left: 8px;
+      font-weight: 600;
     }
-    .bid-pending-val {
-      color: var(--muted);
-      font-style: italic;
+    .bid-summary-card .card-val {
       font-size: 13px;
     }
-    .bid-status-name { font-weight: 600; }
-    .bid-status-name.teamA { color: var(--teamA); }
-    .bid-status-name.teamB { color: var(--teamB); }
-    .bid-status-val.teamA { color: var(--teamA); }
-    .bid-status-val.teamB { color: var(--teamB); }
+    .bid-summary-card .card-winner-star {
+      font-size: 11px;
+      color: var(--gold);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+    }
+    .card-name.teamA { color: var(--teamA); }
+    .card-name.teamB { color: var(--teamB); }
+    .card-val.teamA { color: var(--teamA); }
+    .card-val.teamB { color: var(--teamB); }
     .trump-btn {
       padding: 7px 10px;
       border-radius: 5px;
@@ -1393,17 +1400,9 @@ function advanceBid() {
   } else if (NET.playerTypes[bidder] === 'remote') {
     // Remote human — set awaiting and broadcast so their client shows the bid UI
     G.awaitingPlayer = bidder;
-    const overlay = document.getElementById('bid-overlay');
-    overlay.classList.remove('hidden');
-    hideBidControls();
-    updateLiveBidList();
     broadcastState();
   } else {
     // AI bids (host runs this; clients never reach here)
-    const overlay = document.getElementById('bid-overlay');
-    overlay.classList.remove('hidden');
-    hideBidControls();
-    updateLiveBidList();
     setTimeout(() => {
       const mustBid = !G.highBid && G.currentBidder === G.bidStartIdx;
       const bid = aiChooseBid(G.currentBidder);
@@ -1882,24 +1881,6 @@ function renderPlayerAreas() {
       area.appendChild(dot);
     }
 
-    if (G.phase === 'bid') {
-      const bid = G.playerBids ? G.playerBids[p] : null;
-      if (bid || G.currentBidder === p) {
-        const badge = document.createElement('div');
-        if (bid === 'pass') {
-          badge.className = 'bid-badge passed';
-          badge.textContent = 'Pass';
-        } else if (bid) {
-          badge.className = 'bid-badge';
-          badge.textContent = bid.isMarks ? `${bid.amount}mk ${TRUMP_NAMES[bid.trump]}` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}${bid.indication ? ' [IND]' : ''}`;
-        } else {
-          badge.className = 'bid-badge';
-          badge.textContent = '...';
-        }
-        area.appendChild(badge);
-      }
-    }
-
     table.appendChild(area);
   }
 
@@ -1920,23 +1901,7 @@ function renderPlayerAreas() {
     G.phase === 'play' && G.currentTrick.length > 0 ? 'Waiting… click any domino to pre-select' :
     G.phase === 'play' ? 'Waiting for lead…' : '';
 
-  const p0Badge = document.getElementById('human-bid-badge');
-  if (G.phase === 'bid' && G.playerBids) {
-    const bid = G.playerBids[NET.myIdx];
-    if (bid === 'pass') {
-      p0Badge.className = 'bid-badge passed';
-      p0Badge.textContent = 'Pass';
-      p0Badge.style.display = '';
-    } else if (bid) {
-      p0Badge.className = 'bid-badge';
-      p0Badge.textContent = bid.isMarks ? `${bid.amount}mk ${TRUMP_NAMES[bid.trump]}` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}${bid.indication ? ' [IND]' : ''}`;
-      p0Badge.style.display = '';
-    } else {
-      p0Badge.style.display = 'none';
-    }
-  } else {
-    p0Badge.style.display = 'none';
-  }
+  document.getElementById('human-bid-badge').style.display = 'none';
 }
 
 function renderTrickArea() {
@@ -2144,7 +2109,6 @@ function showBidPanel() {
   const hasHighMark = hb && hb.isMarks;
 
   document.getElementById('bid-panel-context').textContent = '';
-  updateLiveBidList();
 
   const trumpOpts = document.getElementById('trump-options');
   trumpOpts.innerHTML = '';
@@ -2196,8 +2160,7 @@ function showBidPanel() {
     G.bidActed[NET.myIdx] = true;
     G.playerBids[NET.myIdx] = { isMarks: false, amount, trump, indication };
     log(`You bid ${amount} in ${TRUMP_NAMES[trump]}${indication ? ' (Indication)' : ''}.`, 'highlight');
-    hideBidControls();
-    updateLiveBidList();
+    hideBidPanel();
     renderPlayerAreas();
     broadcastState();
     checkBidEnd();
@@ -2226,8 +2189,7 @@ function showBidPanel() {
       G.bidActed[NET.myIdx] = true;
       G.playerBids[NET.myIdx] = { isMarks: true, amount: m, trump };
       log(`You bid ${m} mark(s) in ${TRUMP_NAMES[trump]}.`, 'highlight');
-      hideBidControls();
-      updateLiveBidList();
+      hideBidPanel();
       renderPlayerAreas();
       broadcastState();
       checkBidEnd();
@@ -2252,8 +2214,7 @@ function showBidPanel() {
     G.bidActed[NET.myIdx] = true;
     G.playerBids[NET.myIdx] = 'pass';
     log('You pass.', 'bad');
-    hideBidControls();
-    updateLiveBidList();
+    hideBidPanel();
     renderPlayerAreas();
     broadcastState();
     checkBidEnd();
@@ -2297,55 +2258,55 @@ function renderBidPanelHand() {
 function updateLiveBidList(winnerIdx = null) {
   const content = document.getElementById('bid-summary-content');
   content.innerHTML = '';
+  if (winnerIdx === null) return;
 
-  if (winnerIdx !== null) {
-    const winnerName = winnerIdx === NET.myIdx ? 'You' : (NET.playerNames[winnerIdx] || `P${winnerIdx}`);
-    const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : `${G.highBid.amount}${G.highBid.indication ? ' [IND]' : ''}`;
-    const trumpName = G.trump === FOLLOW_ME ? 'Follow Me' : TRUMP_NAMES[G.trump];
-    const header = document.createElement('div');
-    header.className = 'bid-summary-header';
-    header.textContent = `Bidding complete — ${winnerName} wins: ${bidStr} in ${trumpName}`;
-    content.appendChild(header);
-  }
+  const winnerName = winnerIdx === NET.myIdx ? 'You' : (NET.playerNames[winnerIdx] || `P${winnerIdx}`);
+  const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : `${G.highBid.amount}${G.highBid.indication ? ' [IND]' : ''}`;
+  const trumpName = G.trump === FOLLOW_ME ? 'Follow Me' : TRUMP_NAMES[G.trump];
+
+  const header = document.createElement('div');
+  header.className = 'bid-summary-header';
+  header.textContent = `Bidding complete — ${winnerName} wins: ${bidStr} in ${trumpName}`;
+  content.appendChild(header);
+
+  const row = document.createElement('div');
+  row.className = 'bid-summary-final';
 
   for (let i = 0; i < 6; i++) {
     const bid = G.playerBids ? G.playerBids[i] : null;
-    const isCurrentBidder = winnerIdx === null && G.currentBidder === i && !G.bidActed[i];
-    if (bid === null && !isCurrentBidder) continue;
+    if (bid === null) continue;
 
-    const row = document.createElement('div');
     const teamClass = TEAM[i] === 0 ? 'teamA' : 'teamB';
     const isWinner = winnerIdx === i;
-    row.className = 'bid-status-row' + (isWinner ? ' bid-winner-row' : '');
 
-    const nameEl = document.createElement('span');
-    nameEl.className = `bid-status-name ${teamClass}`;
+    const card = document.createElement('div');
+    card.className = 'bid-summary-card' + (isWinner ? ' bid-winner-card' : '');
+
+    const nameEl = document.createElement('div');
+    nameEl.className = `card-name ${teamClass}`;
     nameEl.textContent = i === NET.myIdx ? 'You' : (NET.playerNames[i] || `P${i}`);
+    card.appendChild(nameEl);
 
-    const rightEl = document.createElement('span');
-    if (isCurrentBidder) {
-      rightEl.className = 'bid-pending-val';
-      rightEl.textContent = 'Deciding…';
-    } else if (bid === 'pass') {
-      rightEl.className = `bid-status-val ${teamClass}`;
-      rightEl.textContent = 'Pass';
-    } else if (bid) {
-      rightEl.className = `bid-status-val ${teamClass}`;
-      rightEl.textContent = `${bid.isMarks ? bid.amount + ' mark(s)' : bid.amount}${bid.indication ? ' [IND]' : ''} in ${TRUMP_NAMES[bid.trump]}`;
+    const valEl = document.createElement('div');
+    valEl.className = `card-val ${teamClass}`;
+    if (bid === 'pass') {
+      valEl.textContent = 'Pass';
+    } else {
+      valEl.textContent = `${bid.isMarks ? bid.amount + 'mk' : bid.amount} ${TRUMP_NAMES[bid.trump]}${bid.indication ? ' [IND]' : ''}`;
     }
-
-    row.appendChild(nameEl);
-    row.appendChild(rightEl);
+    card.appendChild(valEl);
 
     if (isWinner) {
-      const badge = document.createElement('span');
-      badge.className = 'bid-winner-label';
-      badge.textContent = '★ Won Bid';
-      row.appendChild(badge);
+      const star = document.createElement('div');
+      star.className = 'card-winner-star';
+      star.textContent = '★ Won Bid';
+      card.appendChild(star);
     }
 
-    content.appendChild(row);
+    row.appendChild(card);
   }
+
+  content.appendChild(row);
 }
 
 function showBidSummary() {
