@@ -594,6 +594,10 @@
     }
     .seat-toggle:hover { border-color: var(--muted); color: var(--text); }
     .seat-toggle.open { border-color: var(--teamA); color: var(--teamA); }
+    .seat-row.draggable { cursor: grab; }
+    .seat-row.dragging { opacity: 0.35; }
+    .seat-row.drag-over { border-color: var(--gold) !important; background: var(--surface2); }
+    .drag-handle { color: var(--muted); font-size: 13px; cursor: grab; padding: 0 2px; flex-shrink: 0; user-select: none; letter-spacing: 1px; }
     .room-code-box {
       display: flex;
       align-items: center;
@@ -880,7 +884,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.0';
+const VERSION = 'v1.1';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -2482,6 +2486,37 @@ function quitToMenu() {
   showMainMenu();
 }
 
+function swapSeats(i, j) {
+  [NET.playerTypes[i], NET.playerTypes[j]] = [NET.playerTypes[j], NET.playerTypes[i]];
+  [NET.playerNames[i], NET.playerNames[j]] = [NET.playerNames[j], NET.playerNames[i]];
+
+  const connI = NET.connections[i], connJ = NET.connections[j];
+  if (connI) NET.connections[j] = connI; else delete NET.connections[j];
+  if (connJ) NET.connections[i] = connJ; else delete NET.connections[i];
+
+  const dnI = NET.droppedNames[i], dnJ = NET.droppedNames[j];
+  if (dnI) NET.droppedNames[j] = dnI; else delete NET.droppedNames[j];
+  if (dnJ) NET.droppedNames[i] = dnJ; else delete NET.droppedNames[i];
+
+  const htI = NET.heartbeatTimers[i], htJ = NET.heartbeatTimers[j];
+  if (htI) NET.heartbeatTimers[j] = htI; else delete NET.heartbeatTimers[j];
+  if (htJ) NET.heartbeatTimers[i] = htJ; else delete NET.heartbeatTimers[i];
+
+  const dtI = NET.dropTimers[i], dtJ = NET.dropTimers[j];
+  if (dtI) NET.dropTimers[j] = dtI; else delete NET.dropTimers[j];
+  if (dtJ) NET.dropTimers[i] = dtJ; else delete NET.dropTimers[i];
+
+  const lpI = NET.lastPong[i], lpJ = NET.lastPong[j];
+  if (lpI !== undefined) NET.lastPong[j] = lpI; else delete NET.lastPong[j];
+  if (lpJ !== undefined) NET.lastPong[i] = lpJ; else delete NET.lastPong[i];
+
+  // Notify remote players of their new seat index
+  if (NET.connections[j] && NET.connections[j].open) NET.connections[j].send({ type: 'seat', idx: j });
+  if (NET.connections[i] && NET.connections[i].open) NET.connections[i].send({ type: 'seat', idx: i });
+
+  renderLobby();
+}
+
 function renderLobby() {
   const content = document.getElementById('lobby-content');
   const title = document.getElementById('lobby-title');
@@ -2556,6 +2591,41 @@ function renderLobby() {
     for (let i = 0; i < 6; i++) {
       const row = document.createElement('div');
       row.className = `seat-row${i === 0 ? ' mine' : ''}`;
+      row.dataset.seatIdx = i;
+
+      if (i > 0) {
+        const handle = document.createElement('div');
+        handle.className = 'drag-handle';
+        handle.textContent = '⠿';
+        handle.title = 'Drag to reorder';
+        row.appendChild(handle);
+        row.classList.add('draggable');
+        row.draggable = true;
+
+        row.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', String(i));
+          e.dataTransfer.effectAllowed = 'move';
+          setTimeout(() => row.classList.add('dragging'), 0);
+        });
+        row.addEventListener('dragend', () => {
+          row.classList.remove('dragging');
+          seatList.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+        });
+        row.addEventListener('dragover', e => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          seatList.querySelectorAll('.drag-over').forEach(r => r.classList.remove('drag-over'));
+          if (parseInt(e.currentTarget.dataset.seatIdx) > 0) e.currentTarget.classList.add('drag-over');
+        });
+        row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+        row.addEventListener('drop', e => {
+          e.preventDefault();
+          row.classList.remove('drag-over');
+          const from = parseInt(e.dataTransfer.getData('text/plain'));
+          const to = parseInt(e.currentTarget.dataset.seatIdx);
+          if (!isNaN(from) && !isNaN(to) && from !== to && to > 0) swapSeats(from, to);
+        });
+      }
 
       const num = document.createElement('div');
       num.className = `seat-num ${TEAM[i] === 0 ? 'teamA' : 'teamB'}`;
