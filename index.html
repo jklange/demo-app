@@ -836,9 +836,8 @@
     #video-panel {
       display: none;
       position: fixed;
-      bottom: 8px;
-      left: 50%;
-      transform: translateX(-50%);
+      top: 50px;
+      right: 8px;
       z-index: 60;
       background: rgba(10, 30, 18, 0.93);
       border: 1px solid var(--border);
@@ -1172,6 +1171,7 @@ function initGame() {
     awaitingPlayer: null,  // logical player index who should act, or null
     trickInProgress: false,
     handSortPip: null,  // null = default sort, number = sorted by that pip
+    logEntries: [],
   };
   startRound();
 }
@@ -1832,6 +1832,7 @@ function renderAll() {
   renderTricksWon();
   renderPhaseDisplay();
   renderHostControls();
+  renderLog();
   document.getElementById('round-info').textContent = `Round ${G.roundNum} · ${G.phase}`;
 }
 
@@ -2568,11 +2569,27 @@ function highlightCurrentPlayer(idx) {
 }
 
 function log(msg, type = '') {
+  if (!G.logEntries) G.logEntries = [];
+  G.logEntries.push({ msg, type });
   const el = document.getElementById('log-entries');
   const entry = document.createElement('div');
   entry.className = `log-entry ${type}`;
   entry.textContent = msg;
   el.appendChild(entry);
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderLog() {
+  const el = document.getElementById('log-entries');
+  const entries = G.logEntries || [];
+  if (el.childElementCount === entries.length) return;
+  el.innerHTML = '';
+  entries.forEach(({ msg, type }) => {
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    entry.textContent = msg;
+    el.appendChild(entry);
+  });
   el.scrollTop = el.scrollHeight;
 }
 
