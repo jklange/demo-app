@@ -483,6 +483,7 @@
     }
     #bid-summary-view {
       padding: 6px 14px;
+      border-top: 1px solid var(--border);
     }
     .bid-summary-header {
       font-size: 13px;
@@ -495,11 +496,31 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 4px 0;
+      padding: 4px 6px;
       font-size: 15px;
       border-bottom: 1px solid var(--border);
+      border-radius: 4px;
     }
     .bid-status-row:last-child { border-bottom: none; }
+    .bid-status-row.bid-winner-row {
+      background: rgba(255, 200, 0, 0.15);
+      border: 1px solid rgba(255, 200, 0, 0.4);
+      border-radius: 5px;
+      padding: 5px 8px;
+    }
+    .bid-winner-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-left: 8px;
+    }
+    .bid-pending-val {
+      color: var(--muted);
+      font-style: italic;
+      font-size: 13px;
+    }
     .bid-status-name { font-weight: 600; }
     .bid-status-name.teamA { color: var(--teamA); }
     .bid-status-name.teamB { color: var(--teamB); }
@@ -850,12 +871,8 @@
       <button class="btn btn-primary" id="bid-submit">Bid</button>
     </div>
   </div>
-  <div id="bid-summary-view" style="display:none">
+  <div id="bid-summary-view">
     <div id="bid-summary-content"></div>
-  </div>
-  <div style="display:none">
-    <div id="bid-panel-hand"></div>
-    <div id="bid-status-section"><div id="bid-status-list"></div></div>
   </div>
 </div>
 
@@ -1376,9 +1393,17 @@ function advanceBid() {
   } else if (NET.playerTypes[bidder] === 'remote') {
     // Remote human — set awaiting and broadcast so their client shows the bid UI
     G.awaitingPlayer = bidder;
+    const overlay = document.getElementById('bid-overlay');
+    overlay.classList.remove('hidden');
+    hideBidControls();
+    updateLiveBidList();
     broadcastState();
   } else {
     // AI bids (host runs this; clients never reach here)
+    const overlay = document.getElementById('bid-overlay');
+    overlay.classList.remove('hidden');
+    hideBidControls();
+    updateLiveBidList();
     setTimeout(() => {
       const mustBid = !G.highBid && G.currentBidder === G.bidStartIdx;
       const bid = aiChooseBid(G.currentBidder);
@@ -1430,26 +1455,23 @@ function finishBidding() {
   showBidSummary();
   renderAll();
 
-  setTimeout(() => {
-    hideBidPanel();
-    G.phase = 'kitty';
+  G.phase = 'kitty';
 
-    if (G.bidWinner === NET.myIdx) {
+  if (G.bidWinner === NET.myIdx) {
+    broadcastState();
+    showKittyPanel();
+  } else if (NET.playerTypes[G.bidWinner] === 'remote') {
+    G.awaitingPlayer = G.bidWinner;
+    broadcastState();
+  } else {
+    setTimeout(() => {
+      aiKittyChoice(G.bidWinner);
+      log(`Player ${G.bidWinner} takes kitty and leads.`);
       broadcastState();
-      showKittyPanel();
-    } else if (NET.playerTypes[G.bidWinner] === 'remote') {
-      G.awaitingPlayer = G.bidWinner;
-      broadcastState(); // client sees phase='kitty' and awaitingPlayer===myIdx → shows kitty panel
-    } else {
-      setTimeout(() => {
-        aiKittyChoice(G.bidWinner);
-        log(`Player ${G.bidWinner} takes kitty and leads.`);
-        broadcastState();
-        startPlay();
-      }, aiDelay());
-    }
-    renderAll();
-  }, 5000);
+      startPlay();
+    }, aiDelay());
+  }
+  renderAll();
 }
 
 function sortHand(hand, trump) {
@@ -1502,6 +1524,7 @@ function bestDefaultSortPip(hand) {
 
 function startPlay() {
   hideKittyPanel();
+  hideBidPanel();
   G.phase = 'play';
   G.trickLeader = G.bidWinner;
   G.currentTrick = [];
@@ -2114,41 +2137,14 @@ function buildHalf(val) {
 function showBidPanel() {
   const overlay = document.getElementById('bid-overlay');
   overlay.classList.remove('hidden');
+  document.getElementById('bid-bar').style.display = '';
 
   const hb = G.highBid;
   const minNumeric = hb && !hb.isMarks ? hb.amount + 1 : 60;
   const hasHighMark = hb && hb.isMarks;
 
   document.getElementById('bid-panel-context').textContent = '';
-
-  const statusSection = document.getElementById('bid-status-section');
-  const statusList = document.getElementById('bid-status-list');
-  const anyActed = G.playerBids && G.playerBids.some(b => b !== null);
-  if (anyActed) {
-    statusSection.style.display = '';
-    statusList.innerHTML = '';
-    G.playerBids.forEach((bid, i) => {
-      if (bid === null) return;
-      const row = document.createElement('div');
-      row.className = 'bid-status-row';
-      const nameEl = document.createElement('span');
-      const teamClass = TEAM[i] === 0 ? 'teamA' : 'teamB';
-      nameEl.className = `bid-status-name ${teamClass}`;
-      nameEl.textContent = i === NET.myIdx ? 'You' : (NET.playerNames[i] || `P${i}`);
-      const valEl = document.createElement('span');
-      valEl.className = `bid-status-val ${teamClass}`;
-      if (bid === 'pass') {
-        valEl.textContent = 'Pass';
-      } else {
-        valEl.textContent = `${bid.isMarks ? bid.amount + ' mark(s)' : bid.amount}${bid.indication ? ' [IND]' : ''} in ${TRUMP_NAMES[bid.trump]}`;
-      }
-      row.appendChild(nameEl);
-      row.appendChild(valEl);
-      statusList.appendChild(row);
-    });
-  } else {
-    statusSection.style.display = 'none';
-  }
+  updateLiveBidList();
 
   const trumpOpts = document.getElementById('trump-options');
   trumpOpts.innerHTML = '';
@@ -2200,7 +2196,8 @@ function showBidPanel() {
     G.bidActed[NET.myIdx] = true;
     G.playerBids[NET.myIdx] = { isMarks: false, amount, trump, indication };
     log(`You bid ${amount} in ${TRUMP_NAMES[trump]}${indication ? ' (Indication)' : ''}.`, 'highlight');
-    hideBidPanel();
+    hideBidControls();
+    updateLiveBidList();
     renderPlayerAreas();
     broadcastState();
     checkBidEnd();
@@ -2229,7 +2226,8 @@ function showBidPanel() {
       G.bidActed[NET.myIdx] = true;
       G.playerBids[NET.myIdx] = { isMarks: true, amount: m, trump };
       log(`You bid ${m} mark(s) in ${TRUMP_NAMES[trump]}.`, 'highlight');
-      hideBidPanel();
+      hideBidControls();
+      updateLiveBidList();
       renderPlayerAreas();
       broadcastState();
       checkBidEnd();
@@ -2254,7 +2252,8 @@ function showBidPanel() {
     G.bidActed[NET.myIdx] = true;
     G.playerBids[NET.myIdx] = 'pass';
     log('You pass.', 'bad');
-    hideBidPanel();
+    hideBidControls();
+    updateLiveBidList();
     renderPlayerAreas();
     broadcastState();
     checkBidEnd();
@@ -2295,49 +2294,75 @@ function renderBidPanelHand() {
   });
 }
 
+function updateLiveBidList(winnerIdx = null) {
+  const content = document.getElementById('bid-summary-content');
+  content.innerHTML = '';
+
+  if (winnerIdx !== null) {
+    const winnerName = winnerIdx === NET.myIdx ? 'You' : (NET.playerNames[winnerIdx] || `P${winnerIdx}`);
+    const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : `${G.highBid.amount}${G.highBid.indication ? ' [IND]' : ''}`;
+    const trumpName = G.trump === FOLLOW_ME ? 'Follow Me' : TRUMP_NAMES[G.trump];
+    const header = document.createElement('div');
+    header.className = 'bid-summary-header';
+    header.textContent = `Bidding complete — ${winnerName} wins: ${bidStr} in ${trumpName}`;
+    content.appendChild(header);
+  }
+
+  for (let i = 0; i < 6; i++) {
+    const bid = G.playerBids ? G.playerBids[i] : null;
+    const isCurrentBidder = winnerIdx === null && G.currentBidder === i && !G.bidActed[i];
+    if (bid === null && !isCurrentBidder) continue;
+
+    const row = document.createElement('div');
+    const teamClass = TEAM[i] === 0 ? 'teamA' : 'teamB';
+    const isWinner = winnerIdx === i;
+    row.className = 'bid-status-row' + (isWinner ? ' bid-winner-row' : '');
+
+    const nameEl = document.createElement('span');
+    nameEl.className = `bid-status-name ${teamClass}`;
+    nameEl.textContent = i === NET.myIdx ? 'You' : (NET.playerNames[i] || `P${i}`);
+
+    const rightEl = document.createElement('span');
+    if (isCurrentBidder) {
+      rightEl.className = 'bid-pending-val';
+      rightEl.textContent = 'Deciding…';
+    } else if (bid === 'pass') {
+      rightEl.className = `bid-status-val ${teamClass}`;
+      rightEl.textContent = 'Pass';
+    } else if (bid) {
+      rightEl.className = `bid-status-val ${teamClass}`;
+      rightEl.textContent = `${bid.isMarks ? bid.amount + ' mark(s)' : bid.amount}${bid.indication ? ' [IND]' : ''} in ${TRUMP_NAMES[bid.trump]}`;
+    }
+
+    row.appendChild(nameEl);
+    row.appendChild(rightEl);
+
+    if (isWinner) {
+      const badge = document.createElement('span');
+      badge.className = 'bid-winner-label';
+      badge.textContent = '★ Won Bid';
+      row.appendChild(badge);
+    }
+
+    content.appendChild(row);
+  }
+}
+
 function showBidSummary() {
   const overlay = document.getElementById('bid-overlay');
   overlay.classList.remove('hidden');
   document.getElementById('bid-bar').style.display = 'none';
-  const summaryView = document.getElementById('bid-summary-view');
-  summaryView.style.display = '';
-
-  const winnerName = G.bidWinner === NET.myIdx ? 'You' : (NET.playerNames[G.bidWinner] || `P${G.bidWinner}`);
-  const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : `${G.highBid.amount}${G.highBid.indication ? ' [IND]' : ''}`;
-  const trumpName = G.trump === FOLLOW_ME ? 'Follow Me' : TRUMP_NAMES[G.trump];
-
-  const content = document.getElementById('bid-summary-content');
-  content.innerHTML = '';
-
-  const header = document.createElement('div');
-  header.className = 'bid-summary-header';
-  header.textContent = `Bidding complete — ${winnerName} wins: ${bidStr} in ${trumpName}`;
-  content.appendChild(header);
-
-  if (G.playerBids) {
-    G.playerBids.forEach((bid, i) => {
-      if (bid === null) return;
-      const row = document.createElement('div');
-      row.className = 'bid-status-row';
-      const nameEl = document.createElement('span');
-      const teamClass = TEAM[i] === 0 ? 'teamA' : 'teamB';
-      nameEl.className = `bid-status-name ${teamClass}`;
-      nameEl.textContent = i === NET.myIdx ? 'You' : (NET.playerNames[i] || `P${i}`);
-      const valEl = document.createElement('span');
-      valEl.className = `bid-status-val ${teamClass}`;
-      valEl.textContent = bid === 'pass' ? 'Pass'
-        : `${bid.isMarks ? bid.amount + ' mark(s)' : bid.amount}${bid.indication ? ' [IND]' : ''} in ${TRUMP_NAMES[bid.trump]}`;
-      row.appendChild(nameEl);
-      row.appendChild(valEl);
-      content.appendChild(row);
-    });
-  }
+  updateLiveBidList(G.bidWinner);
 }
 
 function hideBidPanel() {
   document.getElementById('bid-overlay').classList.add('hidden');
   document.getElementById('bid-bar').style.display = '';
-  document.getElementById('bid-summary-view').style.display = 'none';
+  document.getElementById('bid-summary-content').innerHTML = '';
+}
+
+function hideBidControls() {
+  document.getElementById('bid-bar').style.display = 'none';
 }
 
 // kitty
