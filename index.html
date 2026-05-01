@@ -371,6 +371,23 @@
     }
     #trick-score span { color: var(--text); font-weight: 600; }
 
+    /* host controls */
+    #host-controls {
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .redo-bid-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 13px;
+    }
+    .redo-bid-row span { color: var(--muted); }
+
     /* ── OVERLAYS ── */
     .overlay {
       position: fixed;
@@ -859,6 +876,11 @@
       Team B: <span id="scoreB-pts">0</span> pts<br>
       Tricks left: <span id="tricks-left">9</span>
     </div>
+    <div id="host-controls" style="display:none">
+      <h3>Host</h3>
+      <button class="btn btn-danger" id="host-restart-btn" style="font-size:12px;padding:4px 8px">Restart Round</button>
+      <div id="host-redo-list"></div>
+    </div>
     <div id="log-section">
       <h3>Game Log</h3>
       <div id="log-entries"></div>
@@ -1345,6 +1367,7 @@ function advanceBid() {
       }
       renderPlayerAreas();
       renderBidInfo();
+      renderHostControls();
       broadcastState();
       checkBidEnd();
     }, aiDelay());
@@ -1658,6 +1681,7 @@ function renderAll() {
   renderBidInfo();
   renderTricksWon();
   renderPhaseDisplay();
+  renderHostControls();
   document.getElementById('round-info').textContent = `Round ${G.roundNum} · ${G.phase}`;
 }
 
@@ -2361,6 +2385,96 @@ function hideTooltip() {
 }
 
 // ─────────────────────────────────────────────
+// HOST CONTROLS
+// ─────────────────────────────────────────────
+function isHost() {
+  return NET.mode === 'local' || NET.mode === 'host';
+}
+
+function renderHostControls() {
+  const el = document.getElementById('host-controls');
+  if (!isHost() || !G.phase || G.phase === 'deal') {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = '';
+
+  const redoList = document.getElementById('host-redo-list');
+  redoList.innerHTML = '';
+
+  if (G.phase === 'bid' && G.playerBids) {
+    G.playerBids.forEach((bid, i) => {
+      if (bid === null) return;
+      const row = document.createElement('div');
+      row.className = 'redo-bid-row';
+      const name = i === NET.myIdx ? 'You' : (NET.playerNames[i] || `P${i}`);
+      const bidStr = bid === 'pass' ? 'Pass' : (bid.isMarks ? `${bid.amount}mk ${TRUMP_NAMES[bid.trump]}` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}`);
+      const label = document.createElement('span');
+      label.textContent = `${name}: ${bidStr}`;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-muted';
+      btn.style.cssText = 'font-size:11px;padding:2px 6px';
+      btn.textContent = 'Redo Bid';
+      btn.onclick = () => hostRedoBid(i);
+      row.appendChild(label);
+      row.appendChild(btn);
+      redoList.appendChild(row);
+    });
+  }
+}
+
+function hostRedoBid(playerIdx) {
+  const name = playerIdx === NET.myIdx ? 'you' : (NET.playerNames[playerIdx] || `P${playerIdx}`);
+  const displayName = playerIdx === NET.myIdx ? 'You' : (NET.playerNames[playerIdx] || `P${playerIdx}`);
+  if (!confirm(`Allow ${displayName} to re-bid?\n\nTheir current bid will be cleared and it will be their turn to bid again.`)) return;
+
+  const wasHighBidder = G.highBid && G.highBid.player === playerIdx;
+  G.bidActed[playerIdx] = false;
+  G.bidPassed[playerIdx] = false;
+  G.playerBids[playerIdx] = null;
+
+  if (wasHighBidder) {
+    G.highBid = null;
+    G.playerBids.forEach((bid, i) => {
+      if (!bid || bid === 'pass') return;
+      if (!G.highBid) {
+        G.highBid = { player: i, ...bid };
+      } else {
+        const better = bid.isMarks
+          ? (!G.highBid.isMarks || bid.amount > G.highBid.amount)
+          : (!G.highBid.isMarks && bid.amount > G.highBid.amount);
+        if (better) G.highBid = { player: i, ...bid };
+      }
+    });
+  }
+
+  hideBidPanel();
+  log(`Host allows ${name} to re-bid.`, 'highlight');
+  G.currentBidder = playerIdx;
+  renderAll();
+  broadcastState();
+  advanceBid();
+}
+
+function hostRestartRound() {
+  if (!confirm('Restart this round?\n\nAll hands will be re-dealt, bids will be reset, and no marks will be awarded for this round.')) return;
+
+  if (G.phase === 'score' && G.lastMarksWon) {
+    G.teamScores[0] -= G.lastMarksWon[0];
+    G.teamScores[1] -= G.lastMarksWon[1];
+    G.bidStartIdx = ((G.bidStartIdx - 1) + 6) % 6;
+  }
+
+  G.roundNum--;
+  hideBidPanel();
+  hideKittyPanel();
+  hideResultPanel();
+  log('Host restarted the round. No marks awarded.', 'highlight');
+  startRound();
+  broadcastState();
+}
+
+// ─────────────────────────────────────────────
 // NETWORK LAYER
 // ─────────────────────────────────────────────
 
@@ -2417,6 +2531,7 @@ function handleClientMessage(conn, data) {
       G.awaitingPlayer = null;
       renderPlayerAreas();
       renderBidInfo();
+      renderHostControls();
       broadcastState();
       checkBidEnd();
       break;
@@ -3239,6 +3354,8 @@ document.getElementById('gameover-newgame').addEventListener('click', () => {
 document.getElementById('quit-btn').addEventListener('click', () => {
   quitToMenu();
 });
+
+document.getElementById('host-restart-btn').addEventListener('click', hostRestartRound);
 
 document.getElementById('menu-singleplayer').addEventListener('click', () => {
   hideMainMenu();
