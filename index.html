@@ -2832,6 +2832,7 @@ function handleHostMessage(data) {
         }
       } else {
         hideResultPanel();
+        if (G.phase === 'kitty' || G.phase === 'play') showBidSummary();
         if (G.phase === 'bid' && G.awaitingPlayer === NET.myIdx) {
           showBidPanel();
         } else if (G.phase === 'kitty' && G.bidWinner === NET.myIdx && G.awaitingPlayer === NET.myIdx) {
