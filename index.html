@@ -884,7 +884,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.1';
+const VERSION = 'v1.2';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -944,6 +944,8 @@ let NET = {
   droppedNames: {},      // seatIdx → name of player who dropped
   heartbeatTimers: {},   // seatIdx → setInterval id (host only)
   lastPong: {},          // seatIdx → timestamp of last pong received (host only)
+  clientWatchdog: null,  // client only: interval id for detecting host silence
+  lastHostMsg: 0,        // client only: timestamp of last message from host
 };
 
 // Map logical player index to display position (0 = bottom / local human)
@@ -2467,6 +2469,7 @@ function quitToMenu() {
   if (NET.peer) { NET.peer.destroy(); NET.peer = null; }
   Object.values(NET.dropTimers).forEach(clearTimeout);
   Object.values(NET.heartbeatTimers).forEach(clearInterval);
+  if (NET.clientWatchdog) { clearInterval(NET.clientWatchdog); }
   NET.mode = 'local';
   NET.myIdx = 0;
   NET.connections = {};
@@ -2480,6 +2483,8 @@ function quitToMenu() {
   NET.droppedNames = {};
   NET.heartbeatTimers = {};
   NET.lastPong = {};
+  NET.clientWatchdog = null;
+  NET.lastHostMsg = 0;
   ['bid-overlay','kitty-overlay','result-overlay','gameover-overlay','lobby-overlay'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
@@ -2906,6 +2911,18 @@ function renderReconnectPrompt(code) {
   content.appendChild(offlineBtn);
 }
 
+function triggerClientDisconnect() {
+  if (NET.mode !== 'client') return;
+  if (NET.clientWatchdog) { clearInterval(NET.clientWatchdog); NET.clientWatchdog = null; }
+  const savedCode = NET.roomCode;
+  NET.mode = 'local';
+  NET.myIdx = 0;
+  if (NET.peer) { try { NET.peer.destroy(); } catch (_) {} NET.peer = null; }
+  NET.hostConn = null;
+  showLobby();
+  renderReconnectPrompt(savedCode);
+}
+
 function markPlayerDisconnected(idx) {
   if (NET.heartbeatTimers[idx]) {
     clearInterval(NET.heartbeatTimers[idx]);
@@ -2986,7 +3003,7 @@ function createRoom() {
           markPlayerDisconnected(seatIdx);
           return;
         }
-        try { NET.connections[seatIdx].send({ type: 'ping' }); } catch (_) {}
+        try { NET.connections[seatIdx].send({ type: 'ping' }); } catch (_) { markPlayerDisconnected(seatIdx); }
       }, 5000);
 
       conn.send({ type: 'seat', idx: seatIdx });
@@ -3012,6 +3029,11 @@ function createRoom() {
     conn.on('data', (data) => handleClientMessage(conn, data));
 
     conn.on('close', () => {
+      const idx = parseInt(Object.entries(NET.connections).find(([, v]) => v === conn)?.[0] ?? '-1');
+      if (idx >= 0) markPlayerDisconnected(idx);
+    });
+
+    conn.on('error', () => {
       const idx = parseInt(Object.entries(NET.connections).find(([, v]) => v === conn)?.[0] ?? '-1');
       if (idx >= 0) markPlayerDisconnected(idx);
     });
@@ -3044,23 +3066,30 @@ function joinRoom(code, statusEl) {
       if (statusEl) { statusEl.className = 'lobby-status ok'; statusEl.textContent = 'Connected! Waiting for seat assignment…'; }
     });
 
-    NET.hostConn.on('data', (data) => handleHostMessage(data));
+    NET.hostConn.on('data', (data) => { NET.lastHostMsg = Date.now(); handleHostMessage(data); });
 
     NET.hostConn.on('error', (err) => {
       if (statusEl) { statusEl.className = 'lobby-status err'; statusEl.textContent = 'Error: ' + err.message; }
     });
 
     NET.hostConn.on('close', () => {
-      if (NET.mode === 'client') {
-        const savedCode = NET.roomCode;
-        NET.mode = 'local';
-        NET.myIdx = 0;
-        NET.peer = null;
-        NET.hostConn = null;
-        showLobby();
-        renderReconnectPrompt(savedCode);
-      }
+      triggerClientDisconnect();
     });
+
+    // Client-side watchdog: if no message from host for 20s, assume disconnect
+    NET.lastHostMsg = Date.now();
+    NET.clientWatchdog = setInterval(() => {
+      if (NET.mode !== 'client') { clearInterval(NET.clientWatchdog); NET.clientWatchdog = null; return; }
+      if (Date.now() - NET.lastHostMsg > 20000) triggerClientDisconnect();
+    }, 5000);
+
+    // Immediate detection when device goes offline (iOS fires this instantly)
+    const handleOffline = () => {
+      if (NET.mode !== 'client') return;
+      window.removeEventListener('offline', handleOffline);
+      triggerClientDisconnect();
+    };
+    window.addEventListener('offline', handleOffline);
   });
 
   NET.mode = 'client';
