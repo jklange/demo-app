@@ -1345,6 +1345,7 @@ function aiKittyChoice(playerIdx) {
 // GAME FLOW
 // ─────────────────────────────────────────────
 function startRound() {
+  hideBidPanel();
   G.roundNum++;
   G.phase = 'deal';
   G.hands = [[], [], [], [], [], []];
@@ -1523,7 +1524,6 @@ function bestDefaultSortPip(hand) {
 
 function startPlay() {
   hideKittyPanel();
-  hideBidPanel();
   G.phase = 'play';
   G.trickLeader = G.bidWinner;
   G.currentTrick = [];
