@@ -870,6 +870,7 @@
       <button class="btn btn-primary" id="menu-host">Host Multiplayer Game</button>
       <button class="btn btn-muted" id="menu-join">Join Multiplayer Game</button>
     </div>
+    <p id="menu-version" style="margin-top:16px;font-size:11px;color:var(--muted);letter-spacing:0.05em"></p>
   </div>
 </div>
 
@@ -879,6 +880,8 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
+const VERSION = 'v1.0';
+document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
 const TEAM = [0, 1, 0, 1, 0, 1]; // player index → team (0=A, 1=B)
