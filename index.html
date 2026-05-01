@@ -936,8 +936,10 @@ let NET = {
   playerNames: ['You', 'P1', 'P2', 'P3', 'P4', 'P5'],
   myName: '',         // local player's chosen display name (clients)
   gameStarted: false,
-  dropTimers: {},     // seatIdx → timer (unused, kept for cleanup compatibility)
-  droppedNames: {},   // seatIdx → name of player who dropped
+  dropTimers: {},        // seatIdx → timer (unused, kept for cleanup compatibility)
+  droppedNames: {},      // seatIdx → name of player who dropped
+  heartbeatTimers: {},   // seatIdx → setInterval id (host only)
+  lastPong: {},          // seatIdx → timestamp of last pong received (host only)
 };
 
 // Map logical player index to display position (0 = bottom / local human)
@@ -2316,6 +2318,9 @@ function handleClientMessage(conn, data) {
   if (playerIdx < 0) return;
 
   switch (data.type) {
+    case 'pong':
+      NET.lastPong[playerIdx] = Date.now();
+      return;
     case 'bid': {
       if (G.currentBidder !== playerIdx) return;
       const bid = data.bid;
@@ -2379,6 +2384,9 @@ function handleClientMessage(conn, data) {
 
 function handleHostMessage(data) {
   switch (data.type) {
+    case 'ping':
+      if (NET.hostConn && NET.hostConn.open) NET.hostConn.send({ type: 'pong' });
+      return;
     case 'seat':
       NET.myIdx = data.idx;
       NET.playerNames[data.idx] = NET.myName || `P${data.idx}`;
@@ -2454,6 +2462,7 @@ function hideMainMenu() {
 function quitToMenu() {
   if (NET.peer) { NET.peer.destroy(); NET.peer = null; }
   Object.values(NET.dropTimers).forEach(clearTimeout);
+  Object.values(NET.heartbeatTimers).forEach(clearInterval);
   NET.mode = 'local';
   NET.myIdx = 0;
   NET.connections = {};
@@ -2465,6 +2474,8 @@ function quitToMenu() {
   NET.gameStarted = false;
   NET.dropTimers = {};
   NET.droppedNames = {};
+  NET.heartbeatTimers = {};
+  NET.lastPong = {};
   ['bid-overlay','kitty-overlay','result-overlay','gameover-overlay','lobby-overlay'].forEach(id => {
     document.getElementById(id).classList.add('hidden');
   });
@@ -2613,6 +2624,7 @@ function renderLobby() {
     cancelBtn.onclick = () => {
       if (NET.peer) NET.peer.destroy();
       Object.values(NET.dropTimers).forEach(clearTimeout);
+      Object.values(NET.heartbeatTimers).forEach(clearInterval);
       NET.mode = 'local';
       NET.myIdx = 0;
       NET.connections = {};
@@ -2623,6 +2635,8 @@ function renderLobby() {
       NET.gameStarted = false;
       NET.dropTimers = {};
       NET.droppedNames = {};
+      NET.heartbeatTimers = {};
+      NET.lastPong = {};
       hideLobby();
       showMainMenu();
     };
@@ -2822,6 +2836,26 @@ function renderReconnectPrompt(code) {
   content.appendChild(offlineBtn);
 }
 
+function markPlayerDisconnected(idx) {
+  if (NET.heartbeatTimers[idx]) {
+    clearInterval(NET.heartbeatTimers[idx]);
+    delete NET.heartbeatTimers[idx];
+  }
+  delete NET.lastPong[idx];
+  if (NET.connections[idx]) {
+    try { NET.connections[idx].close(); } catch (_) {}
+    delete NET.connections[idx];
+  }
+  const name = NET.playerNames[idx] || `Player ${idx}`;
+  if (!NET.droppedNames[idx]) {
+    NET.droppedNames[idx] = name;
+    NET.playerTypes[idx] = 'open';
+    log(`${name} disconnected. Seat ${idx} held open — share code ${NET.roomCode} to reconnect.`, 'bad');
+    renderLobby();
+    renderPlayerAreas();
+  }
+}
+
 function createRoom() {
   const code = randomCode();
   NET.roomCode = code;
@@ -2858,15 +2892,32 @@ function createRoom() {
       const seatIdx = Object.entries(NET.playerTypes).findIndex(([i, t]) => parseInt(i) > 0 && t === 'open');
       if (seatIdx < 0) { conn.close(); return; }
 
-      // Clear any grace-period timer for this seat
+      // Clear any lingering timers for this seat (reconnect case)
       if (NET.dropTimers[seatIdx]) {
         clearTimeout(NET.dropTimers[seatIdx]);
         delete NET.dropTimers[seatIdx];
-        delete NET.droppedNames[seatIdx];
       }
+      if (NET.heartbeatTimers[seatIdx]) {
+        clearInterval(NET.heartbeatTimers[seatIdx]);
+        delete NET.heartbeatTimers[seatIdx];
+      }
+      delete NET.droppedNames[seatIdx];
 
       NET.connections[seatIdx] = conn;
       NET.playerTypes[seatIdx] = 'remote';
+      NET.lastPong[seatIdx] = Date.now();
+
+      // Heartbeat: ping every 5s, declare disconnect if no pong for 12s
+      NET.heartbeatTimers[seatIdx] = setInterval(() => {
+        if (!NET.connections[seatIdx]) { clearInterval(NET.heartbeatTimers[seatIdx]); return; }
+        if (Date.now() - (NET.lastPong[seatIdx] || 0) > 12000) {
+          clearInterval(NET.heartbeatTimers[seatIdx]);
+          delete NET.heartbeatTimers[seatIdx];
+          markPlayerDisconnected(seatIdx);
+          return;
+        }
+        try { NET.connections[seatIdx].send({ type: 'ping' }); } catch (_) {}
+      }, 5000);
 
       conn.send({ type: 'seat', idx: seatIdx });
 
@@ -2892,15 +2943,7 @@ function createRoom() {
 
     conn.on('close', () => {
       const idx = parseInt(Object.entries(NET.connections).find(([, v]) => v === conn)?.[0] ?? '-1');
-      if (idx >= 0) {
-        delete NET.connections[idx];
-        const name = NET.playerNames[idx] || `Player ${idx}`;
-        NET.droppedNames[idx] = name;
-        NET.playerTypes[idx] = 'open'; // keep seat open indefinitely
-        log(`${name} disconnected. Seat ${idx} held open — share code ${NET.roomCode} to reconnect.`, 'bad');
-        renderLobby();
-        renderPlayerAreas();
-      }
+      if (idx >= 0) markPlayerDisconnected(idx);
     });
   });
 
