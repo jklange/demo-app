@@ -2297,7 +2297,8 @@ function updateLiveBidList(winnerIdx = null) {
   const row = document.createElement('div');
   row.className = 'bid-summary-final';
 
-  for (let i = 0; i < 6; i++) {
+  for (let offset = 0; offset < 6; offset++) {
+    const i = (G.bidStartIdx + offset) % 6;
     const bid = G.playerBids ? G.playerBids[i] : null;
     if (bid === null) continue;
 
