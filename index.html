@@ -936,7 +936,7 @@ let NET = {
   playerNames: ['You', 'P1', 'P2', 'P3', 'P4', 'P5'],
   myName: '',         // local player's chosen display name (clients)
   gameStarted: false,
-  dropTimers: {},     // seatIdx → timer (60s grace period after disconnect)
+  dropTimers: {},     // seatIdx → timer (unused, kept for cleanup compatibility)
   droppedNames: {},   // seatIdx → name of player who dropped
 };
 
@@ -2783,7 +2783,7 @@ function renderReconnectPrompt(code) {
   content.innerHTML = '';
 
   const msg = document.createElement('p');
-  msg.textContent = `You were dropped from the game. The host keeps your seat open for 60 seconds — reconnect now to resume.`;
+  msg.textContent = `You were dropped from the game. Your seat is held open — reconnect any time to resume.`;
   content.appendChild(msg);
 
   const statusEl = document.createElement('div');
@@ -2896,21 +2896,10 @@ function createRoom() {
         delete NET.connections[idx];
         const name = NET.playerNames[idx] || `Player ${idx}`;
         NET.droppedNames[idx] = name;
-        NET.playerTypes[idx] = 'open'; // keep seat open for 60s grace period
-        log(`${name} disconnected. Seat ${idx} open for 60 seconds — share code ${NET.roomCode} to reconnect.`, 'bad');
+        NET.playerTypes[idx] = 'open'; // keep seat open indefinitely
+        log(`${name} disconnected. Seat ${idx} held open — share code ${NET.roomCode} to reconnect.`, 'bad');
         renderLobby();
         renderPlayerAreas();
-
-        NET.dropTimers[idx] = setTimeout(() => {
-          if (NET.playerTypes[idx] === 'open') {
-            NET.playerTypes[idx] = 'ai';
-            delete NET.droppedNames[idx];
-            delete NET.dropTimers[idx];
-            log(`Seat ${idx} reconnect window expired. AI takes over.`, 'bad');
-            renderLobby();
-            renderPlayerAreas();
-          }
-        }, 60000);
       }
     });
   });
