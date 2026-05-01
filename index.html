@@ -426,11 +426,12 @@
 
     /* bid bar */
     @keyframes bid-pulse {
-      0%, 100% { background: #1f4829; border-bottom-color: #2a5e38; }
-      50%       { background: #3a7a4a; border-bottom-color: #4a9a5a; }
+      0%, 100% { border-bottom-color: #2a5e38; }
+      50%       { border-bottom-color: #6fcf8a; }
     }
     #bid-overlay {
       animation: bid-pulse 2s ease-in-out infinite;
+      background: #1f4829;
       border-bottom: 2px solid #3a7a4a;
       box-shadow: 0 2px 12px rgba(0,0,0,0.5);
       flex-shrink: 0;
@@ -446,7 +447,7 @@
       min-height: 44px;
     }
     .bid-bar-context {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--muted);
       white-space: nowrap;
       flex-shrink: 0;
@@ -468,7 +469,7 @@
       flex-shrink: 0;
     }
     .bid-bar-label {
-      font-size: 10px;
+      font-size: 12px;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.06em;
