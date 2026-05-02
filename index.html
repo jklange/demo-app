@@ -848,8 +848,8 @@
     #video-panel {
       display: none;
       position: fixed;
-      top: 50px;
-      right: 8px;
+      bottom: 8px;
+      left: 8px;
       z-index: 60;
       background: rgba(10, 30, 18, 0.93);
       border: 1px solid var(--border);
@@ -858,7 +858,18 @@
       flex-direction: row;
       align-items: center;
       gap: 6px;
+      touch-action: none;
     }
+    #video-panel-handle {
+      cursor: grab;
+      padding: 0 4px;
+      color: rgba(255,255,255,0.35);
+      user-select: none;
+      font-size: 15px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    #video-panel-handle:active { cursor: grabbing; }
     #video-panel.visible { display: flex; }
     #video-tiles { display: none; }
 
@@ -982,6 +993,7 @@
 
 <!-- VIDEO PANEL -->
 <div id="video-panel">
+  <div id="video-panel-handle" title="Drag to move">&#x2807;</div>
   <div id="video-tiles"></div>
   <div class="video-controls">
     <button class="btn btn-muted" id="video-mic-btn" onclick="toggleMic()" style="font-size:12px;padding:3px 8px">&#x1F3A4; Mic</button>
@@ -4038,6 +4050,50 @@ function testLastBidPass() {
   console.assert(G.phase === 'kitty', `Expected phase to be 'kitty', but got '${G.phase}'`);
   if (G.phase === 'kitty') console.log("✅ Test Passed: Phase correctly transitioned to kitty.");
 }
+
+(function makeVideoPanelDraggable() {
+  const panel = document.getElementById('video-panel');
+  const handle = document.getElementById('video-panel-handle');
+  if (!panel || !handle) return;
+
+  function startDrag(clientX, clientY) {
+    const rect = panel.getBoundingClientRect();
+    // Switch from bottom/left to top/left so we can freely position during drag
+    panel.style.bottom = 'auto';
+    panel.style.right = 'auto';
+    panel.style.top = rect.top + 'px';
+    panel.style.left = rect.left + 'px';
+    const startX = clientX - rect.left;
+    const startY = clientY - rect.top;
+
+    function onMove(ev) {
+      ev.preventDefault();
+      const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      panel.style.left = (cx - startX) + 'px';
+      panel.style.top  = (cy - startY) + 'px';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp);
+  }
+
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    startDrag(e.clientX, e.clientY);
+  });
+  handle.addEventListener('touchstart', e => {
+    e.preventDefault();
+    startDrag(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+})();
 </script>
 </body>
 </html>
