@@ -873,7 +873,10 @@
       background: #050e08;
       box-shadow: 2px 2px 8px rgba(0,0,0,0.6);
       z-index: 20;
-      pointer-events: none;
+      pointer-events: auto;
+      resize: both;
+      min-width: 60px;
+      min-height: 45px;
     }
     @media (min-width: 1440px) {
       .pvtile { width: 120px; height: 90px; }
@@ -890,6 +893,33 @@
     .pvtile-self video { transform: scaleX(-1); }
     .pvtile.teamA { border-color: rgba(74,158,255,0.7); }
     .pvtile.teamB { border-color: rgba(255,107,107,0.7); }
+    .pvtile-handle {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 16px;
+      background: rgba(0,0,0,0.55);
+      cursor: grab;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 3px;
+      border-radius: 3px 3px 0 0;
+      opacity: 0;
+      transition: opacity 0.15s;
+      user-select: none;
+    }
+    .pvtile:hover .pvtile-handle { opacity: 1; }
+    .pvtile-handle.dragging { cursor: grabbing; opacity: 1; }
+    .pvtile-reset {
+      font-size: 9px;
+      color: rgba(255,255,255,0.65);
+      cursor: pointer;
+      line-height: 1;
+      padding: 1px 3px;
+      border-radius: 2px;
+    }
+    .pvtile-reset:hover { color: #fff; background: rgba(255,255,255,0.15); }
     .video-controls {
       display: flex;
       gap: 6px;
@@ -3035,12 +3065,21 @@ function renderVideoGrid() {
       tile.id = tileId;
       const teamClass = TEAM[seat] === 0 ? 'teamA' : 'teamB';
       tile.className = `pvtile ${teamClass}${seat === NET.myIdx ? ' pvtile-self' : ''}`;
+      const handle = document.createElement('div');
+      handle.className = 'pvtile-handle';
+      const resetBtn = document.createElement('span');
+      resetBtn.className = 'pvtile-reset';
+      resetBtn.title = 'Reset position & size';
+      resetBtn.textContent = '⊙';
+      handle.appendChild(resetBtn);
+      tile.appendChild(handle);
       const video = document.createElement('video');
       video.autoplay = true;
       video.playsInline = true;
       video.muted = (seat === NET.myIdx);
       tile.appendChild(video);
       table.appendChild(tile);
+      makeTileDraggable(tile, seat);
     }
 
     const video = tile.querySelector('video');
@@ -3058,7 +3097,50 @@ function renderVideoGrid() {
   document.getElementById('video-panel').classList.add('visible');
 }
 
+function makeTileDraggable(tile, seat) {
+  const handle = tile.querySelector('.pvtile-handle');
+  if (!handle) return;
+
+  handle.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('pvtile-reset')) return;
+    e.preventDefault();
+    const tableEl = document.getElementById('table');
+    const tableRect = tableEl.getBoundingClientRect();
+    const startX = e.clientX - (tile.offsetLeft);
+    const startY = e.clientY - (tile.offsetTop);
+    handle.classList.add('dragging');
+    tile.style.zIndex = 50;
+
+    function onMove(ev) {
+      tile.style.left = (ev.clientX - startX) + 'px';
+      tile.style.top  = (ev.clientY - startY) + 'px';
+      tile.dataset.userMoved = '1';
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      tile.style.zIndex = 20;
+      handle.classList.remove('dragging');
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  const resetBtn = handle.querySelector('.pvtile-reset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      delete tile.dataset.userMoved;
+      tile.style.width = '';
+      tile.style.height = '';
+      const tableRect = document.getElementById('table').getBoundingClientRect();
+      positionVideoTile(tile, seat, tableRect);
+    });
+  }
+}
+
 function positionVideoTile(tile, seat, tableRect) {
+  if (tile.dataset.userMoved) return;
   const dIdx = dispIdx(seat);
   const TW = window.innerWidth >= 1920 ? 160 : window.innerWidth >= 1440 ? 120 : 88;
   const TH = window.innerWidth >= 1920 ? 120 : window.innerWidth >= 1440 ? 90 : 66;
