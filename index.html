@@ -1477,8 +1477,9 @@ function aiKittyChoice(playerIdx) {
       const nonCounts = hand.filter(d => !isTrump(d, trump) && dominoPoints(d) === 0).sort((a, b) => a.h - b.h);
       if (nonCounts.length > 0) {
         const idx = hand.indexOf(nonCounts[0]);
+        const tmp = G.kitty[ki];
         G.kitty[ki] = hand[idx];
-        hand[idx] = G.kitty[ki];
+        hand[idx] = tmp;
       }
     }
   });
