@@ -2881,7 +2881,6 @@ function handleClientMessage(conn, data) {
       });
       log(`Player ${playerIdx} swaps ${ks.length} domino(es) with the kitty.`);
       hideKittyPanel();
-      broadcastState();
       startPlay();
       break;
     }
@@ -2928,6 +2927,7 @@ function handleHostMessage(data) {
         }
       } else {
         hideResultPanel();
+        if (G.phase !== 'kitty') hideKittyPanel();
         if (G.phase === 'kitty' || G.phase === 'play') showBidSummary();
         if (G.phase === 'bid' && G.awaitingPlayer === NET.myIdx) {
           showBidPanel();
