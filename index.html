@@ -663,6 +663,8 @@
     #gameover-panel { text-align: center; }
     #gameover-panel h2 { font-size: 32px; }
     #gameover-panel .winner-text { font-size: 18px; color: var(--text); }
+    #gameover-trophy { font-size: 160px; line-height: 1; display: block; margin: 8px auto; filter: drop-shadow(0 4px 16px rgba(0,0,0,0.5)); animation: trophy-bounce 0.6s ease-out; }
+    @keyframes trophy-bounce { 0% { transform: scale(0.4); opacity: 0; } 70% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); } }
 
     /* tooltip */
     #tooltip {
@@ -1091,6 +1093,7 @@
 <!-- GAME OVER OVERLAY -->
 <div class="overlay hidden" id="gameover-overlay">
   <div class="panel" id="gameover-panel">
+    <span id="gameover-trophy" class="hidden"></span>
     <h2 id="gameover-title">🎉</h2>
     <div class="winner-text" id="gameover-text"></div>
     <button class="btn btn-gold" id="gameover-newgame" style="margin-top:8px">New Game</button>
@@ -2630,10 +2633,17 @@ function showGameOver() {
   document.getElementById('gameover-overlay').classList.remove('hidden');
   const winner = G.teamScores[0] >= 7 ? 'Team A' : 'Team B';
   const isMyTeamA = TEAM[NET.myIdx] === 0;
-  document.getElementById('gameover-title').textContent =
-    (winner === 'Team A' && isMyTeamA) || (winner === 'Team B' && !isMyTeamA) ? '🎉 You Win!' : `${winner} Wins`;
+  const iWon = (winner === 'Team A' && isMyTeamA) || (winner === 'Team B' && !isMyTeamA);
+  document.getElementById('gameover-title').textContent = iWon ? '🎉 You Win!' : `${winner} Wins`;
   document.getElementById('gameover-text').textContent =
     `Final score: Team A ${G.teamScores[0]}–${G.teamScores[1]} Team B`;
+  const trophy = document.getElementById('gameover-trophy');
+  trophy.textContent = '🏆';
+  trophy.classList.remove('hidden');
+  // restart animation each time
+  trophy.style.animation = 'none';
+  trophy.offsetWidth;
+  trophy.style.animation = '';
 }
 
 // ─────────────────────────────────────────────
