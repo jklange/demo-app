@@ -3111,30 +3111,44 @@ function makeTileDraggable(tile, seat) {
   const handle = tile.querySelector('.pvtile-handle');
   if (!handle) return;
 
-  handle.addEventListener('mousedown', e => {
-    if (e.target.classList.contains('pvtile-reset')) return;
-    e.preventDefault();
-    const tableEl = document.getElementById('table');
-    const tableRect = tableEl.getBoundingClientRect();
-    const startX = e.clientX - (tile.offsetLeft);
-    const startY = e.clientY - (tile.offsetTop);
+  function startDrag(clientX, clientY) {
+    const startX = clientX - tile.offsetLeft;
+    const startY = clientY - tile.offsetTop;
     handle.classList.add('dragging');
     tile.style.zIndex = 50;
 
     function onMove(ev) {
-      tile.style.left = (ev.clientX - startX) + 'px';
-      tile.style.top  = (ev.clientY - startY) + 'px';
+      const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      tile.style.left = (cx - startX) + 'px';
+      tile.style.top  = (cy - startY) + 'px';
       tile.dataset.userMoved = '1';
     }
     function onUp() {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onUp);
       tile.style.zIndex = 20;
       handle.classList.remove('dragging');
     }
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp);
+  }
+
+  handle.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('pvtile-reset')) return;
+    e.preventDefault();
+    startDrag(e.clientX, e.clientY);
   });
+
+  handle.addEventListener('touchstart', e => {
+    if (e.target.classList.contains('pvtile-reset')) return;
+    e.preventDefault();
+    startDrag(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
 
   const resetBtn = handle.querySelector('.pvtile-reset');
   if (resetBtn) {
