@@ -435,6 +435,7 @@
       border-top: 2px solid #3a7a4a;
       box-shadow: 0 -2px 12px rgba(0,0,0,0.5);
       flex-shrink: 0;
+      min-height: 56px;
     }
     #bid-overlay.hidden { display: none; }
     #bid-overlay.pulsing { animation: bid-pulse 2s ease-in-out infinite; }
@@ -1492,6 +1493,7 @@ function aiKittyChoice(playerIdx) {
 // ─────────────────────────────────────────────
 function startRound() {
   hideBidPanel();
+  document.getElementById('bid-overlay').classList.remove('hidden');
   G.roundNum++;
   G.phase = 'deal';
   G.hands = [[], [], [], [], [], []];
@@ -2280,6 +2282,7 @@ function showBidPanel() {
   overlay.classList.remove('hidden');
   overlay.classList.add('pulsing');
   document.getElementById('bid-bar').style.display = '';
+  document.getElementById('bid-summary-view').style.display = 'none';
 
   const hb = G.highBid;
   const minNumeric = hb && !hb.isMarks ? hb.amount + 1 : 60;
@@ -2486,14 +2489,15 @@ function showBidSummary() {
   const overlay = document.getElementById('bid-overlay');
   overlay.classList.remove('hidden', 'pulsing');
   document.getElementById('bid-bar').style.display = 'none';
+  document.getElementById('bid-summary-view').style.display = '';
   updateLiveBidList(G.bidWinner);
 }
 
 function hideBidPanel() {
   const overlay = document.getElementById('bid-overlay');
-  overlay.classList.add('hidden');
   overlay.classList.remove('pulsing');
-  document.getElementById('bid-bar').style.display = '';
+  document.getElementById('bid-bar').style.display = 'none';
+  document.getElementById('bid-summary-view').style.display = 'none';
   document.getElementById('bid-summary-content').innerHTML = '';
 }
 
