@@ -486,13 +486,6 @@
       padding: 6px 14px;
       border-top: 1px solid var(--border);
     }
-    .bid-summary-header {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--gold);
-      margin-bottom: 8px;
-      text-align: center;
-    }
     .bid-summary-final {
       display: flex;
       flex-wrap: wrap;
@@ -501,34 +494,30 @@
     }
     .bid-summary-card {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      padding: 6px 12px;
+      padding: 4px 10px;
       border-radius: 6px;
       border: 1px solid var(--border);
       background: var(--surface);
-      min-width: 72px;
-      gap: 2px;
+      gap: 6px;
     }
     .bid-summary-card.bid-winner-card {
       background: rgba(255, 200, 0, 0.15);
       border: 2px solid rgba(255, 200, 0, 0.6);
-      padding: 5px 11px;
+      padding: 3px 9px;
     }
     .bid-summary-card .card-name {
       font-size: 12px;
       font-weight: 600;
     }
     .bid-summary-card .card-val {
-      font-size: 13px;
+      font-size: 12px;
     }
     .bid-summary-card .card-winner-star {
       font-size: 11px;
       color: var(--gold);
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-top: 2px;
     }
     .card-name.teamA { color: var(--teamA); }
     .card-name.teamB { color: var(--teamB); }
@@ -2442,11 +2431,6 @@ function updateLiveBidList(winnerIdx = null) {
   const winnerName = winnerIdx === NET.myIdx ? 'You' : (NET.playerNames[winnerIdx] || `P${winnerIdx}`);
   const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : `${G.highBid.amount}${G.highBid.indication ? ' [IND]' : ''}`;
   const trumpName = G.trump === FOLLOW_ME ? 'Follow Me' : TRUMP_NAMES[G.trump];
-
-  const header = document.createElement('div');
-  header.className = 'bid-summary-header';
-  header.textContent = `Bidding complete — ${winnerName} wins: ${bidStr} in ${trumpName}`;
-  content.appendChild(header);
 
   const row = document.createElement('div');
   row.className = 'bid-summary-final';
