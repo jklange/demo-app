@@ -1141,20 +1141,20 @@ const PIP_LAYOUTS = {
 // dispIdx() maps logical player → display position so the local human is always at 0.
 const SEAT_POSITIONS = [
   null,                                                             // 0: human (bottom, handled separately)
-  { top:'74%', left:'16%' },                                       // 1: 8 o'clock
+  { top:'63%', left:'16%' },                                       // 1: 8 o'clock
   { top:'28%', left:'5%'  },                                       // 2: 10 o'clock
   { top:'5%',  left:'50%', transform:'translateX(-50%)' },         // 3: 12 o'clock (center top)
   { top:'28%', right:'5%' },                                       // 4: 2 o'clock
-  { top:'74%', right:'16%'},                                       // 5: 4 o'clock
+  { top:'63%', right:'16%'},                                       // 5: 4 o'clock
 ];
 // iPad variant: side players raised so their areas and domino slots clear the self-video tile
 const SEAT_POSITIONS_IPAD = [
   null,                                                             // 0: human (bottom, handled separately)
-  { top:'74%', left:'16%' },                                       // 1: 8 o'clock
+  { top:'63%', left:'16%' },                                       // 1: 8 o'clock
   { top:'14%', left:'5%'  },                                       // 2: 10 o'clock (raised from 28%)
   { top:'5%',  left:'50%', transform:'translateX(-50%)' },         // 3: 12 o'clock (center top)
   { top:'14%', right:'5%' },                                       // 4: 2 o'clock (raised from 28%)
-  { top:'74%', right:'16%'},                                       // 5: 4 o'clock
+  { top:'63%', right:'16%'},                                       // 5: 4 o'clock
 ];
 
 // Domino positions on #table for played trick, indexed by display position
