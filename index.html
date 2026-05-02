@@ -803,6 +803,12 @@
       #human-hand .domino.vertical .pip-grid { width: 36px; height: 36px; }
       #human-hand .domino.vertical .pip      { width:  7px; height:  7px; }
       #human-hand .domino.vertical .divider  { height: 1px; margin: 0 5px; }
+
+      /* Played trick dominoes: ~65% of full size */
+      .trick-domino-play .domino.vertical                { width: 46px; height: 88px; border-radius: 6px; border-width: 2px; }
+      .trick-domino-play .domino.vertical .pip-grid      { width: 30px; height: 30px; }
+      .trick-domino-play .domino.vertical .pip           { width:  6px; height:  6px; }
+      .trick-domino-play .domino.vertical .divider       { height: 1px; margin: 0 4px; }
     }
 
     /* ── RESPONSIVE — iPad portrait / small tablet (≤900px) ── */
@@ -829,6 +835,12 @@
       #human-hand .domino.vertical .pip-grid { width: 28px; height: 28px; }
       #human-hand .domino.vertical .pip      { width:  5px; height:  5px; }
       #human-hand .domino.vertical .divider  { height: 1px; margin: 0 3px; }
+
+      /* Played trick dominoes: ~50% of full size */
+      .trick-domino-play .domino.vertical                { width: 36px; height: 68px; border-radius: 5px; border-width: 2px; }
+      .trick-domino-play .domino.vertical .pip-grid      { width: 24px; height: 24px; }
+      .trick-domino-play .domino.vertical .pip           { width:  4px; height:  4px; }
+      .trick-domino-play .domino.vertical .divider       { height: 1px; margin: 0 3px; }
     }
   </style>
   <style>
@@ -1110,6 +1122,16 @@ const TRICK_SLOT_POSITIONS = [
   { top:'18%', left:'50%', rotate: 180 },   // 3: 12 o'clock (center)
   { top:'40%', left:'82%', rotate:  90 },   // 4: 2 o'clock
   { top:'68%', left:'70%', rotate:  30 },   // 5: 4 o'clock
+];
+// iPad variant: shift side dominoes toward center so they clear video tiles
+// anchored to the left/right player areas
+const TRICK_SLOT_POSITIONS_IPAD = [
+  { top:'76%', left:'50%', rotate:   0 },   // 0: 6 o'clock (me)
+  { top:'66%', left:'35%', rotate: -30 },   // 1: 8 o'clock
+  { top:'40%', left:'30%', rotate: -90 },   // 2: 10 o'clock (shifted right, away from video)
+  { top:'20%', left:'50%', rotate: 180 },   // 3: 12 o'clock
+  { top:'40%', left:'70%', rotate:  90 },   // 4: 2 o'clock (shifted left, away from video)
+  { top:'66%', left:'65%', rotate:  30 },   // 5: 4 o'clock
 ];
 
 // ─────────────────────────────────────────────
@@ -2007,8 +2029,9 @@ function renderPlayerAreas() {
 function renderTrickArea() {
   document.querySelectorAll('.trick-domino-play').forEach(el => el.remove());
   const table = document.getElementById('table');
+  const slots = window.innerWidth <= 1400 ? TRICK_SLOT_POSITIONS_IPAD : TRICK_SLOT_POSITIONS;
   G.currentTrick.forEach(({ player, domino }) => {
-    const pos = TRICK_SLOT_POSITIONS[dispIdx(player)];
+    const pos = slots[dispIdx(player)];
     const wrap = document.createElement('div');
     wrap.className = 'trick-domino-play';
     wrap.style.cssText = `position:absolute; top:${pos.top}; left:${pos.left};
