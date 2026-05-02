@@ -3635,7 +3635,7 @@ function renderJoinForm() {
     NET.myName = name;
     statusEl.className='lobby-status'; statusEl.textContent='Connecting…';
     connectBtn.disabled = true;
-    joinRoom(code, statusEl);
+    joinRoom(code, statusEl, () => renderJoinForm());
   };
 
   inputRow.appendChild(codeInput);
@@ -3653,7 +3653,7 @@ function renderJoinForm() {
   setTimeout(() => nameInput.focus(), 50);
 }
 
-function renderReconnectPrompt(code) {
+function renderReconnectPrompt(code, errMsg) {
   const content = document.getElementById('lobby-content');
   const title = document.getElementById('lobby-title');
   title.textContent = 'Disconnected';
@@ -3664,7 +3664,9 @@ function renderReconnectPrompt(code) {
   content.appendChild(msg);
 
   const statusEl = document.createElement('div');
-  statusEl.className = 'lobby-status';
+  statusEl.className = errMsg ? 'lobby-status err' : 'lobby-status';
+  if (errMsg) statusEl.textContent = `Connection failed: ${errMsg}`;
+  content.appendChild(statusEl);
 
   const reconnectBtn = document.createElement('button');
   reconnectBtn.className = 'btn btn-primary';
@@ -3673,11 +3675,10 @@ function renderReconnectPrompt(code) {
     statusEl.className = 'lobby-status';
     statusEl.textContent = 'Reconnecting…';
     reconnectBtn.disabled = true;
-    joinRoom(code, statusEl);
+    joinRoom(code, statusEl, (err) => renderReconnectPrompt(code, err));
   };
 
   content.appendChild(reconnectBtn);
-  content.appendChild(statusEl);
 
   const joinOtherBtn = document.createElement('button');
   joinOtherBtn.className = 'btn btn-muted';
@@ -3840,7 +3841,7 @@ function createRoom() {
   renderLobby();
 }
 
-function joinRoom(code, statusEl) {
+function joinRoom(code, statusEl, onFailure) {
   NET.mode = 'client';
   NET.myIdx = 0; // will be assigned by host
   NET.roomCode = code;
@@ -3855,6 +3856,7 @@ function joinRoom(code, statusEl) {
     NET.mode = 'local';
     NET.peer.destroy();
     NET.peer = null;
+    if (onFailure) onFailure(err.message);
   });
 
   NET.peer.on('open', () => {
