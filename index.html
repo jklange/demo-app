@@ -427,13 +427,13 @@
 
     /* bid bar */
     @keyframes bid-pulse {
-      0%, 100% { border-color: #2a5e38; }
-      50%       { border-color: #6fcf8a; }
+      0%, 100% { border-top-color: #2a5e38; }
+      50%       { border-top-color: #6fcf8a; }
     }
     #bid-overlay {
       background: #1f4829;
-      border: 2px solid #3a7a4a;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+      border-top: 2px solid #3a7a4a;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.5);
       flex-shrink: 0;
     }
     #bid-overlay.hidden { display: none; }
@@ -948,40 +948,6 @@
   <button class="btn btn-muted" id="quit-btn" style="font-size:16px;padding:4px 10px;margin-left:8px;flex-shrink:0">Quit</button>
 </div>
 
-<!-- BID BAR (hidden until it's your turn to bid) -->
-<div class="hidden" id="bid-overlay">
-  <div id="bid-bar">
-    <span id="bid-panel-context" class="bid-bar-context"></span>
-    <div class="bid-bar-sep"></div>
-    <div class="bid-bar-group">
-      <span class="bid-bar-label">Trump Suit</span>
-      <div class="trump-options" id="trump-options"></div>
-    </div>
-    <div class="bid-bar-sep"></div>
-    <div class="bid-bar-group">
-      <span class="bid-bar-label">Bid</span>
-      <button class="btn btn-muted" id="bid-dec">−</button>
-      <input class="num-input" type="number" id="bid-amount" value="60" min="60" max="87" />
-      <button class="btn btn-muted" id="bid-inc">+</button>
-    </div>
-    <div class="bid-bar-sep"></div>
-    <div class="bid-bar-group">
-      <span class="bid-bar-label">Marks</span>
-      <div class="marks-row" id="mark-bids-row"></div>
-    </div>
-    <div class="bid-bar-sep"></div>
-    <label class="indication-label"><input type="checkbox" id="bid-indication"> Indication</label>
-    <div class="bid-bar-sep"></div>
-    <div class="bid-bar-group" style="gap: 20px;">
-      <button class="btn btn-primary" id="bid-submit">Bid</button>
-      <button class="btn btn-danger" id="bid-pass">Pass</button>
-    </div>
-  </div>
-  <div id="bid-summary-view">
-    <div id="bid-summary-content"></div>
-  </div>
-</div>
-
 <!-- VIDEO PANEL -->
 <div id="video-panel">
   <div id="video-panel-handle" title="Drag to move">&#x2807;</div>
@@ -1047,6 +1013,40 @@
       <h3>Game Log</h3>
       <div id="log-entries"></div>
     </div>
+  </div>
+</div>
+
+<!-- BID BAR (hidden until it's your turn to bid) -->
+<div class="hidden" id="bid-overlay">
+  <div id="bid-bar">
+    <span id="bid-panel-context" class="bid-bar-context"></span>
+    <div class="bid-bar-sep"></div>
+    <div class="bid-bar-group">
+      <span class="bid-bar-label">Trump Suit</span>
+      <div class="trump-options" id="trump-options"></div>
+    </div>
+    <div class="bid-bar-sep"></div>
+    <div class="bid-bar-group">
+      <span class="bid-bar-label">Bid</span>
+      <button class="btn btn-muted" id="bid-dec">−</button>
+      <input class="num-input" type="number" id="bid-amount" value="60" min="60" max="87" />
+      <button class="btn btn-muted" id="bid-inc">+</button>
+    </div>
+    <div class="bid-bar-sep"></div>
+    <div class="bid-bar-group">
+      <span class="bid-bar-label">Marks</span>
+      <div class="marks-row" id="mark-bids-row"></div>
+    </div>
+    <div class="bid-bar-sep"></div>
+    <label class="indication-label"><input type="checkbox" id="bid-indication"> Indication</label>
+    <div class="bid-bar-sep"></div>
+    <div class="bid-bar-group" style="gap: 20px;">
+      <button class="btn btn-primary" id="bid-submit">Bid</button>
+      <button class="btn btn-danger" id="bid-pass">Pass</button>
+    </div>
+  </div>
+  <div id="bid-summary-view">
+    <div id="bid-summary-content"></div>
   </div>
 </div>
 
