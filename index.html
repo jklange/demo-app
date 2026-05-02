@@ -945,6 +945,7 @@
     <span class="team-label teamB-label">Team B</span>
   </div>
   <button class="btn btn-muted" id="video-toggle-btn" onclick="toggleVideo()" style="display:none;font-size:14px;padding:4px 9px;margin-left:8px;flex-shrink:0">&#x1F4F7; Video</button>
+  <button class="btn btn-muted" id="mute-btn" onclick="toggleMuteSound()" style="font-size:16px;padding:4px 10px;margin-left:8px;flex-shrink:0">&#x1F50A;</button>
   <button class="btn btn-muted" id="quit-btn" style="font-size:16px;padding:4px 10px;margin-left:8px;flex-shrink:0">Quit</button>
 </div>
 
@@ -1729,7 +1730,14 @@ function advanceTrick() {
   }
 }
 
+let soundMuted = false;
+function toggleMuteSound() {
+  soundMuted = !soundMuted;
+  document.getElementById('mute-btn').textContent = soundMuted ? '\u{1F507}' : '\u{1F50A}';
+}
+
 function playDominoSound() {
+  if (soundMuted) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const buf = ctx.createBuffer(1, ctx.sampleRate * 0.12, ctx.sampleRate);
