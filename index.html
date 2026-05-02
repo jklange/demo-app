@@ -1201,6 +1201,7 @@ let NET = {
   lastPong: {},          // seatIdx → timestamp of last pong received (host only)
   clientWatchdog: null,  // client only: interval id for detecting host silence
   lastHostMsg: 0,        // client only: timestamp of last message from host
+  offlineHandler: null,  // client only: current window 'offline' listener, kept for cleanup
   // Video/audio
   mediaStream: null,
   mediaCalls: {},
@@ -3744,6 +3745,7 @@ function triggerClientDisconnect() {
   if (NET.mode !== 'client') return;
   cleanupMedia();
   if (NET.clientWatchdog) { clearInterval(NET.clientWatchdog); NET.clientWatchdog = null; }
+  if (NET.offlineHandler) { window.removeEventListener('offline', NET.offlineHandler); NET.offlineHandler = null; }
   const savedCode = NET.roomCode;
   NET.mode = 'local';
   NET.myIdx = 0;
@@ -3886,22 +3888,32 @@ function joinRoom(code, statusEl, onFailure) {
   NET.myIdx = 0; // will be assigned by host
   NET.roomCode = code;
 
-  NET.peer = new Peer({
+  // Remove any stale offline listener from a previous session before creating a new one.
+  if (NET.offlineHandler) {
+    window.removeEventListener('offline', NET.offlineHandler);
+    NET.offlineHandler = null;
+  }
+
+  const myPeer = new Peer({
     debug: 0,
     config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
   });
+  NET.peer = myPeer;
 
-  NET.peer.on('error', (err) => {
+  myPeer.on('error', (err) => {
+    // Guard against stale handler firing after a new peer was already created.
+    if (NET.peer !== myPeer) { try { myPeer.destroy(); } catch (_) {} return; }
     if (statusEl) { statusEl.className = 'lobby-status err'; statusEl.textContent = 'Connection failed: ' + err.message; }
     NET.mode = 'local';
-    NET.peer.destroy();
+    myPeer.destroy();
     NET.peer = null;
     if (onFailure) onFailure(err.message);
   });
 
-  NET.peer.on('open', () => {
+  myPeer.on('open', () => {
+    if (NET.peer !== myPeer) { try { myPeer.destroy(); } catch (_) {} return; }
     setupMediaCallHandler();
-    NET.hostConn = NET.peer.connect('ee88-' + code);
+    NET.hostConn = myPeer.connect('ee88-' + code);
 
     NET.hostConn.on('open', () => {
       if (statusEl) { statusEl.className = 'lobby-status ok'; statusEl.textContent = 'Connected! Waiting for seat assignment…'; }
@@ -3924,13 +3936,15 @@ function joinRoom(code, statusEl, onFailure) {
       if (Date.now() - NET.lastHostMsg > 20000) triggerClientDisconnect();
     }, 5000);
 
-    // Immediate detection when device goes offline (iOS fires this instantly)
-    const handleOffline = () => {
+    // Immediate detection when device goes offline (iOS fires this instantly).
+    // Store on NET so triggerClientDisconnect can remove it if the disconnect is not caused by offline.
+    NET.offlineHandler = () => {
+      window.removeEventListener('offline', NET.offlineHandler);
+      NET.offlineHandler = null;
       if (NET.mode !== 'client') return;
-      window.removeEventListener('offline', handleOffline);
       triggerClientDisconnect();
     };
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener('offline', NET.offlineHandler);
   });
 
   NET.mode = 'client';
