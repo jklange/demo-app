@@ -1547,10 +1547,12 @@ function advanceBid() {
 
   if (bidder === NET.myIdx) {
     G.awaitingPlayer = bidder;
+    renderPlayerAreas();
     showBidPanel();
   } else if (NET.playerTypes[bidder] === 'remote') {
     // Remote human — set awaiting and broadcast so their client shows the bid UI
     G.awaitingPlayer = bidder;
+    renderPlayerAreas();
     broadcastState();
   } else {
     // AI bids (host runs this; clients never reach here)
