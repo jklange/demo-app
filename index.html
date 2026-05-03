@@ -3387,6 +3387,7 @@ function setupMediaCallHandler() {
 }
 
 function quitToMenu() {
+  if (NET.mode === 'host' && NET.gameStarted && G.teamScores[0] < 7 && G.teamScores[1] < 7) saveGameState();
   cleanupMedia();
   if (NET.peer) { NET.peer.destroy(); NET.peer = null; }
   Object.values(NET.dropTimers).forEach(clearTimeout);
