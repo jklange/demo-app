@@ -1367,7 +1367,7 @@ function validNumericBid(highBid) {
 function formatBidLabel(bid) {
   if (!bid) return null;
   if (bid === 'pass') return 'Pass';
-  return bid.isMarks ? `${bid.amount}mk` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}`;
+  return bid.isMarks ? `${bid.amount}mk` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}${bid.indication ? ' [IND]' : ''}`;
 }
 
 function aiChooseBid(playerIdx) {
