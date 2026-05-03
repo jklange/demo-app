@@ -3663,7 +3663,7 @@ function renderLobby() {
 
     const startBtn = document.createElement('button');
     startBtn.className = 'btn btn-gold';
-    startBtn.textContent = 'Start Game';
+    startBtn.textContent = NET.savedState ? 'Resume Game' : 'Start Game';
     startBtn.onclick = hostStartGame;
 
     const cancelBtn = document.createElement('button');
@@ -4016,6 +4016,14 @@ function createRoom() {
 
       renderLobby();
       renderPlayerAreas();
+
+      // Auto-start resume once all expected remote players have reconnected
+      if (NET.savedState) {
+        const allReady = NET.savedState.playerTypes.every((t, i) =>
+          t !== 'remote' || NET.playerTypes[i] === 'remote'
+        );
+        if (allReady) hostStartGame();
+      }
     });
 
     conn.on('data', (data) => handleClientMessage(conn, data));
