@@ -1905,6 +1905,7 @@ function saveGameState() {
     version: 1,
     savedAt: Date.now(),
     mode: NET.mode,
+    roomCode: NET.mode === 'host' ? NET.roomCode : undefined,
     roundNum: G.roundNum,
     teamScores: [...G.teamScores],
     bidStartIdx: G.bidStartIdx,
@@ -3927,7 +3928,7 @@ function markPlayerDisconnected(idx) {
 }
 
 function createRoom() {
-  const code = randomCode();
+  const code = NET.savedState?.roomCode || randomCode();
   NET.roomCode = code;
   NET.mode = 'host';
   NET.myIdx = 0;
@@ -3950,7 +3951,8 @@ function createRoom() {
 
   NET.peer.on('error', (err) => {
     if (err.type === 'unavailable-id') {
-      // code collision — try a new one
+      // code collision — clear saved code so retry uses a fresh random one
+      if (NET.savedState) NET.savedState.roomCode = null;
       NET.peer.destroy();
       createRoom();
     } else {
