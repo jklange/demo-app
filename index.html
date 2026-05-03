@@ -1209,6 +1209,7 @@ let NET = {
   videoActive: false,
   micMuted: false,
   camOff: false,
+  savedState: null,  // populated when resuming a saved game
 };
 
 // Map logical player index to display position (0 = bottom / local human)
@@ -1224,11 +1225,11 @@ let turnDotTimers = {};   // keyed by player index (includes NET.myIdx)
 let turnDotVisible = new Set(); // players whose dot delay has elapsed
 let preMove = null; // domino pre-selected by human to auto-play on their next turn
 
-function initGame() {
+function initGame(restore = null) {
   G = {
-    teamScores: [0, 0],
-    roundNum: 0,
-    bidStartIdx: Math.floor(Math.random() * 6),
+    teamScores: restore ? [...restore.teamScores] : [0, 0],
+    roundNum: restore ? restore.roundNum : 0,
+    bidStartIdx: restore ? restore.bidStartIdx : Math.floor(Math.random() * 6),
     phase: 'deal',
     hands: [[], [], [], [], [], []],
     kitty: [],
@@ -1884,6 +1885,7 @@ function endRound() {
   G.lastMarksWon = marksWon;
   renderScoreBar();
   broadcastState();
+  if (NET.mode === 'host' && G.teamScores[0] < 7 && G.teamScores[1] < 7) saveGameState();
   showResultPanel(marksWon);
 
   if (G.teamScores[0] >= 7 || G.teamScores[1] >= 7) {
@@ -1892,6 +1894,40 @@ function endRound() {
       showGameOver();
     }, 200);
   }
+}
+
+// ─────────────────────────────────────────────
+// SAVE / RESUME
+// ─────────────────────────────────────────────
+function saveGameState() {
+  const save = {
+    version: 1,
+    savedAt: Date.now(),
+    roundNum: G.roundNum,
+    teamScores: [...G.teamScores],
+    bidStartIdx: G.bidStartIdx,
+    playerNames: [...NET.playerNames],
+    playerTypes: [...NET.playerTypes],
+  };
+  localStorage.setItem('ee88-saved-game', JSON.stringify(save));
+}
+
+function loadSavedGame() {
+  try {
+    const raw = localStorage.getItem('ee88-saved-game');
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+
+function clearSavedGame() {
+  localStorage.removeItem('ee88-saved-game');
+}
+
+function resumeFromSave() {
+  const save = loadSavedGame();
+  if (!save) return;
+  NET.savedState = save;
+  createRoom();
 }
 
 // ─────────────────────────────────────────────
@@ -2640,6 +2676,7 @@ function hideResultPanel() {
 }
 
 function showGameOver() {
+  if (NET.mode === 'host') clearSavedGame();
   document.getElementById('gameover-overlay').classList.remove('hidden');
   const winner = G.teamScores[0] >= 7 ? 'Team A' : 'Team B';
   const isMyTeamA = TEAM[NET.myIdx] === 0;
@@ -3364,6 +3401,7 @@ function quitToMenu() {
   NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
   NET.myName = '';
   NET.gameStarted = false;
+  NET.savedState = null;
   NET.dropTimers = {};
   NET.droppedNames = {};
   NET.heartbeatTimers = {};
@@ -3442,8 +3480,32 @@ function renderLobby() {
     btns.appendChild(cancelBtn);
     content.appendChild(btns);
 
+    const save = loadSavedGame();
+    if (save) {
+      const sep = document.createElement('hr');
+      sep.style.cssText = 'border:none;border-top:1px solid var(--border);margin:14px 0 10px';
+      content.appendChild(sep);
+
+      const resumeInfo = document.createElement('div');
+      resumeInfo.className = 'lobby-status';
+      const players = save.playerNames.filter((n, i) => i > 0 && save.playerTypes[i] === 'remote').join(', ');
+      resumeInfo.textContent = `Saved: Round ${save.roundNum + 1}, A ${save.teamScores[0]}–${save.teamScores[1]} B${players ? ' · ' + players : ''}`;
+      content.appendChild(resumeInfo);
+
+      const resumeBtn = document.createElement('button');
+      resumeBtn.className = 'btn btn-primary';
+      resumeBtn.textContent = 'Resume Saved Game';
+      resumeBtn.style.marginTop = '8px';
+      resumeBtn.onclick = resumeFromSave;
+      content.appendChild(resumeBtn);
+    }
+
   } else if (NET.mode === 'host') {
-    title.textContent = 'Host — Waiting for Players';
+    if (NET.savedState) {
+      title.textContent = `Resume — Round ${NET.savedState.roundNum + 1} (A: ${NET.savedState.teamScores[0]}, B: ${NET.savedState.teamScores[1]})`;
+    } else {
+      title.textContent = 'Host — Waiting for Players';
+    }
 
     content.innerHTML = '';
 
@@ -3471,7 +3533,9 @@ function renderLobby() {
 
     const hint = document.createElement('div');
     hint.className = 'lobby-status';
-    hint.textContent = 'Share this code with other players. Toggle seats between AI and open for human players.';
+    hint.textContent = NET.savedState
+      ? 'Resuming saved game. Have players join and use drag handles to move them into their correct seats.'
+      : 'Share this code with other players. Toggle seats between AI and open for human players.';
     content.appendChild(hint);
 
     // Seat list
@@ -3545,7 +3609,9 @@ function renderLobby() {
         status.textContent = `${NET.droppedNames[i]} — dropped (reconnecting…)`;
       } else {
         status.className = 'seat-status';
-        status.textContent = 'AI';
+        const expectedName = NET.savedState && NET.savedState.playerTypes[i] === 'remote' && NET.playerTypes[i] === 'open'
+          ? NET.savedState.playerNames[i] : null;
+        if (expectedName) status.textContent = `was: ${expectedName}`;
       }
 
       row.appendChild(num);
@@ -3846,6 +3912,12 @@ function createRoom() {
   NET.myIdx = 0;
   NET.playerTypes = ['human', 'open', 'open', 'open', 'open', 'open'];
   NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  if (NET.savedState) {
+    NET.playerNames = [...NET.savedState.playerNames];
+    NET.playerTypes = NET.savedState.playerTypes.map((t, i) =>
+      i === 0 ? 'human' : (t === 'remote' ? 'open' : t)
+    );
+  }
   NET.connections = {};
 
   const statusEl = document.createElement('div');
@@ -4015,8 +4087,10 @@ function hostStartGame() {
   });
   NET.gameStarted = true;
 
-  // Start fresh game
-  initGame();
+  const restore = NET.savedState || null;
+  NET.savedState = null;
+  if (!restore) clearSavedGame();
+  initGame(restore);
   hideLobby();
 
   // Broadcast game start + initial state to all clients
