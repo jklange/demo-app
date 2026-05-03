@@ -1109,6 +1109,7 @@
       <button class="btn btn-gold" id="menu-singleplayer">Start Single Player Game</button>
       <button class="btn btn-primary" id="menu-host">Host Multiplayer Game</button>
       <button class="btn btn-muted" id="menu-join">Join Multiplayer Game</button>
+      <button class="btn btn-primary" id="menu-resume" style="display:none">Resume Saved Game</button>
     </div>
     <p id="menu-version" style="margin-top:16px;font-size:11px;color:var(--muted);letter-spacing:0.05em"></p>
   </div>
@@ -1885,7 +1886,7 @@ function endRound() {
   G.lastMarksWon = marksWon;
   renderScoreBar();
   broadcastState();
-  if (NET.mode === 'host' && G.teamScores[0] < 7 && G.teamScores[1] < 7) saveGameState();
+  if ((NET.mode === 'host' || NET.mode === 'local') && G.teamScores[0] < 7 && G.teamScores[1] < 7) saveGameState();
   showResultPanel(marksWon);
 
   if (G.teamScores[0] >= 7 || G.teamScores[1] >= 7) {
@@ -1903,6 +1904,7 @@ function saveGameState() {
   const save = {
     version: 1,
     savedAt: Date.now(),
+    mode: NET.mode,
     roundNum: G.roundNum,
     teamScores: [...G.teamScores],
     bidStartIdx: G.bidStartIdx,
@@ -1926,8 +1928,18 @@ function clearSavedGame() {
 function resumeFromSave() {
   const save = loadSavedGame();
   if (!save) return;
-  NET.savedState = save;
-  createRoom();
+  if (save.mode === 'local') {
+    hideMainMenu();
+    NET.mode = 'local';
+    NET.myIdx = 0;
+    NET.playerTypes = [...save.playerTypes];
+    NET.playerNames = [...save.playerNames];
+    clearSavedGame();
+    initGame(save);
+  } else {
+    NET.savedState = save;
+    createRoom();
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -2676,7 +2688,7 @@ function hideResultPanel() {
 }
 
 function showGameOver() {
-  if (NET.mode === 'host') clearSavedGame();
+  if (NET.mode === 'host' || NET.mode === 'local') clearSavedGame();
   document.getElementById('gameover-overlay').classList.remove('hidden');
   const winner = G.teamScores[0] >= 7 ? 'Team A' : 'Team B';
   const isMyTeamA = TEAM[NET.myIdx] === 0;
@@ -3080,6 +3092,14 @@ function hideLobby() {
 
 function showMainMenu() {
   document.getElementById('menu-overlay').classList.remove('hidden');
+  const save = loadSavedGame();
+  const resumeBtn = document.getElementById('menu-resume');
+  if (save) {
+    resumeBtn.style.display = '';
+    resumeBtn.textContent = `Resume Round ${save.roundNum + 1} (A ${save.teamScores[0]}–${save.teamScores[1]} B)`;
+  } else {
+    resumeBtn.style.display = 'none';
+  }
 }
 
 function hideMainMenu() {
@@ -3387,7 +3407,7 @@ function setupMediaCallHandler() {
 }
 
 function quitToMenu() {
-  if (NET.mode === 'host' && NET.gameStarted && G.teamScores[0] < 7 && G.teamScores[1] < 7) saveGameState();
+  if ((NET.mode === 'host' && NET.gameStarted || NET.mode === 'local' && G.roundNum > 0) && G.teamScores[0] < 7 && G.teamScores[1] < 7) saveGameState();
   cleanupMedia();
   if (NET.peer) { NET.peer.destroy(); NET.peer = null; }
   Object.values(NET.dropTimers).forEach(clearTimeout);
@@ -4163,6 +4183,11 @@ document.getElementById('menu-singleplayer').addEventListener('click', () => {
   NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
   NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
   initGame();
+});
+
+document.getElementById('menu-resume').addEventListener('click', () => {
+  hideMainMenu();
+  resumeFromSave();
 });
 
 document.getElementById('menu-host').addEventListener('click', () => {
