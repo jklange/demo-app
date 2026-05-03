@@ -392,14 +392,14 @@
       flex-direction: column;
       gap: 6px;
     }
-    .redo-bid-row {
+    .redo-bid-row, .redo-play-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 6px;
       font-size: 13px;
     }
-    .redo-bid-row span { color: var(--muted); }
+    .redo-bid-row span, .redo-play-row span { color: var(--muted); }
 
     /* ── OVERLAYS ── */
     .overlay {
@@ -1245,6 +1245,7 @@ function initGame() {
     teamTrickPts: [0, 0],
     awaitingPlayer: null,  // logical player index who should act, or null
     trickInProgress: false,
+    trickResolveId: 0,
     handSortPip: null,  // null = default sort, number = sorted by that pip
     logEntries: [],
   };
@@ -1780,10 +1781,12 @@ function playDomino(playerIdx, domino) {
   renderPlayerAreas();
   renderTricksWon();
   renderBidInfo();
+  renderHostControls();
   if (G.currentTrick.length === 6) {
     G.trickInProgress = true;
     broadcastState();
-    setTimeout(resolveTrick, TRICK_PAUSE);
+    const resolveId = ++G.trickResolveId;
+    setTimeout(() => { if (G.trickResolveId === resolveId) resolveTrick(); }, TRICK_PAUSE);
   } else {
     broadcastState();
     advanceTrick();
@@ -2747,6 +2750,25 @@ function renderHostControls() {
       redoList.appendChild(row);
     });
   }
+
+  if (isMultiplayer && G.phase === 'play' && G.currentTrick.length > 0) {
+    G.currentTrick.forEach(play => {
+      const row = document.createElement('div');
+      row.className = 'redo-play-row';
+      const name = play.player === NET.myIdx ? 'You' : (NET.playerNames[play.player] || `P${play.player}`);
+      const d = play.domino;
+      const label = document.createElement('span');
+      label.textContent = `${name}: ${d.h}-${d.l}`;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-muted';
+      btn.style.cssText = 'font-size:11px;padding:2px 6px';
+      btn.textContent = 'Redo Play';
+      btn.onclick = () => hostRedoPlay(play.player);
+      row.appendChild(label);
+      row.appendChild(btn);
+      redoList.appendChild(row);
+    });
+  }
 }
 
 function hostRedoBid(playerIdx) {
@@ -2785,6 +2807,34 @@ function hostRedoBid(playerIdx) {
   renderAll();
   broadcastState();
   advanceBid();
+}
+
+function hostRedoPlay(playerIdx) {
+  const playIdx = G.currentTrick.findIndex(p => p.player === playerIdx);
+  if (playIdx === -1) return;
+
+  const displayName = playerIdx === NET.myIdx ? 'You' : (NET.playerNames[playerIdx] || `P${playerIdx}`);
+  const name = playerIdx === NET.myIdx ? 'you' : (NET.playerNames[playerIdx] || `P${playerIdx}`);
+  const numAfter = G.currentTrick.length - playIdx - 1;
+  const confirmMsg = numAfter > 0
+    ? `Allow ${displayName} to redo their play?\n\n${numAfter} play(s) made after theirs will also be undone.`
+    : `Allow ${displayName} to redo their play?`;
+  if (!confirm(confirmMsg)) return;
+
+  const playsToUndo = G.currentTrick.slice(playIdx);
+  playsToUndo.forEach(play => {
+    G.hands[play.player].push(play.domino);
+  });
+  G.currentTrick = G.currentTrick.slice(0, playIdx);
+
+  G.trickResolveId++;
+  G.trickInProgress = false;
+
+  const undoDesc = playsToUndo.length > 1 ? `${playsToUndo.length} plays undone.` : 'Play undone.';
+  log(`Host allows ${name} to redo their play. ${undoDesc}`, 'highlight');
+  renderAll();
+  broadcastState();
+  advanceTrick();
 }
 
 function hostRestartRound() {
