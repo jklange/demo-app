@@ -3014,6 +3014,7 @@ function handleHostMessage(data) {
       NET.myIdx = data.idx;
       NET.playerNames[data.idx] = NET.myName || `P${data.idx}`;
       sendToHost({ type: 'setName', name: NET.playerNames[data.idx] });
+      if (NET.roomCode) localStorage.setItem('ee88-seat-' + NET.roomCode, data.idx);
       renderLobby();
       break;
     case 'nameUpdate':
@@ -3967,8 +3968,14 @@ function createRoom() {
 
   NET.peer.on('connection', (conn) => {
     conn.on('open', () => {
-      // Find the first open seat
-      const seatIdx = Object.entries(NET.playerTypes).findIndex(([i, t]) => parseInt(i) > 0 && t === 'open');
+      // Find seat: during resume, honor the client's claimed seat if it's still open
+      let seatIdx = -1;
+      const claimed = conn.metadata?.claimedSeat;
+      if (NET.savedState && claimed > 0 && NET.playerTypes[claimed] === 'open') {
+        seatIdx = claimed;
+      } else {
+        seatIdx = Object.entries(NET.playerTypes).findIndex(([i, t]) => parseInt(i) > 0 && t === 'open');
+      }
       if (seatIdx < 0) { conn.close(); return; }
 
       // Clear any lingering timers for this seat (reconnect case)
@@ -4072,7 +4079,11 @@ function joinRoom(code, statusEl, onFailure) {
   myPeer.on('open', () => {
     if (NET.peer !== myPeer) { try { myPeer.destroy(); } catch (_) {} return; }
     setupMediaCallHandler();
-    NET.hostConn = myPeer.connect('ee88-' + code);
+    const savedSeatStr = localStorage.getItem('ee88-seat-' + code);
+    const claimedSeat = savedSeatStr !== null ? parseInt(savedSeatStr) : null;
+    NET.hostConn = myPeer.connect('ee88-' + code, {
+      metadata: claimedSeat !== null ? { claimedSeat } : undefined,
+    });
 
     NET.hostConn.on('open', () => {
       if (statusEl) { statusEl.className = 'lobby-status ok'; statusEl.textContent = 'Connected! Waiting for seat assignment…'; }
