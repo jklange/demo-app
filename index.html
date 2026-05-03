@@ -1517,7 +1517,7 @@ function startRound() {
   const defaultPip = bestDefaultSortPip(G.hands[NET.myIdx]);
   sortHandByNumber(G.hands[NET.myIdx], defaultPip);
   G.handSortPip = defaultPip;
-  log(`Round ${G.roundNum} begins. Bid starts with Player ${G.bidStartIdx}.`, 'highlight');
+  log(`Round ${G.roundNum} begins. Bid starts with ${pName(G.bidStartIdx)}.`, 'highlight');
 
   G.phase = 'bid';
   renderAll();
@@ -1561,14 +1561,14 @@ function advanceBid() {
         G.bidPassed[G.currentBidder] = true;
         G.bidActed[G.currentBidder] = true;
         G.playerBids[G.currentBidder] = 'pass';
-        log(`Player ${G.currentBidder} passes.`);
+        log(`${pName(G.currentBidder)} passes.`);
       } else {
         const finalBid = bid || { isMarks: false, amount: 60, trump: 0 };
         G.highBid = { player: G.currentBidder, ...finalBid };
         G.bidActed[G.currentBidder] = true;
         G.playerBids[G.currentBidder] = finalBid;
         const bidStr = finalBid.isMarks ? `${finalBid.amount} mark(s)` : `${finalBid.amount}${finalBid.indication ? ' [IND]' : ''}`;
-        log(`Player ${G.currentBidder} bids ${bidStr} in ${TRUMP_NAMES[finalBid.trump]}.`, 'highlight');
+        log(`${pName(G.currentBidder)} bids ${bidStr} in ${TRUMP_NAMES[finalBid.trump]}.`, 'highlight');
       }
       renderPlayerAreas();
       renderBidInfo();
@@ -1600,7 +1600,7 @@ function finishBidding() {
   G.trump = G.highBid.trump;
   const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : `${G.highBid.amount}${G.highBid.indication ? ' [IND]' : ''}`;
   const trumpDesc = G.trump === FOLLOW_ME ? 'Follow Me (no trump)' : TRUMP_NAMES[G.trump];
-  log(`Bidding over. Player ${G.bidWinner} wins at ${bidStr} — ${trumpDesc}.`, 'good');
+  log(`Bidding over. ${pName(G.bidWinner)} wins at ${bidStr} — ${trumpDesc}.`, 'good');
 
   showBidSummary();
   renderAll();
@@ -1616,7 +1616,7 @@ function finishBidding() {
   } else {
     setTimeout(() => {
       aiKittyChoice(G.bidWinner);
-      log(`Player ${G.bidWinner} takes kitty and leads.`);
+      log(`${pName(G.bidWinner)} takes kitty and leads.`);
       broadcastState();
       startPlay();
     }, aiDelay());
@@ -1771,7 +1771,7 @@ function playDomino(playerIdx, domino) {
   playDominoSound();
   G.hands[playerIdx] = G.hands[playerIdx].filter(d => dominoId(d) !== dominoId(domino));
   G.currentTrick.push({ player: playerIdx, domino });
-  log(`Player ${playerIdx} plays ${domino.h}-${domino.l}.`);
+  log(`${pName(playerIdx)} plays ${domino.h}-${domino.l}.`);
   G.awaitingPlayer = null;
   renderTrickArea();
   renderHumanHand();
@@ -1797,7 +1797,7 @@ function resolveTrick() {
   G.teamTrickPts[winTeam] += pts;
 
   G.completedTricks.push({ winner, plays: [...trick], pts });
-  log(`Player ${winner} wins trick (${pts} pts).`, winTeam === 0 ? 'good' : 'bad');
+  log(`${pName(winner)} wins trick (${pts} pts).`, winTeam === 0 ? 'good' : 'bad');
 
   G.trickLeader = winner;
   G.currentTrick = [];
@@ -1857,10 +1857,10 @@ function endRound() {
     const allTricks = G.completedTricks.every(t => TEAM[t.winner] === bidTeam);
     if (allTricks) {
       marksWon[bidTeam] = hb.amount;
-      log(`Player ${hb.player}'s team wins all tricks! +${hb.amount} mark(s).`, 'good');
+      log(`${pName(hb.player)}'s team wins all tricks! +${hb.amount} mark(s).`, 'good');
     } else {
       marksWon[1 - bidTeam] = hb.amount;
-      log(`Player ${hb.player}'s team fails mark bid! Opponents +${hb.amount} mark(s).`, 'bad');
+      log(`${pName(hb.player)}'s team fails mark bid! Opponents +${hb.amount} mark(s).`, 'bad');
     }
   } else {
     if (bidPts >= hb.amount) {
@@ -2342,7 +2342,7 @@ function showBidPanel() {
     G.highBid = { player: NET.myIdx, isMarks: false, amount, trump, indication };
     G.bidActed[NET.myIdx] = true;
     G.playerBids[NET.myIdx] = { isMarks: false, amount, trump, indication };
-    log(`You bid ${amount} in ${TRUMP_NAMES[trump]}${indication ? ' (Indication)' : ''}.`, 'highlight');
+    log(`${pName(NET.myIdx)} bids ${amount} in ${TRUMP_NAMES[trump]}${indication ? ' (Indication)' : ''}.`, 'highlight');
     hideBidPanel();
     renderPlayerAreas();
     broadcastState();
@@ -2371,7 +2371,7 @@ function showBidPanel() {
       G.highBid = { player: NET.myIdx, isMarks: true, amount: m, trump };
       G.bidActed[NET.myIdx] = true;
       G.playerBids[NET.myIdx] = { isMarks: true, amount: m, trump };
-      log(`You bid ${m} mark(s) in ${TRUMP_NAMES[trump]}.`, 'highlight');
+      log(`${pName(NET.myIdx)} bids ${m} mark(s) in ${TRUMP_NAMES[trump]}.`, 'highlight');
       hideBidPanel();
       renderPlayerAreas();
       broadcastState();
@@ -2396,7 +2396,7 @@ function showBidPanel() {
     G.bidPassed[NET.myIdx] = true;
     G.bidActed[NET.myIdx] = true;
     G.playerBids[NET.myIdx] = 'pass';
-    log('You pass.', 'bad');
+    log(`${pName(NET.myIdx)} passes.`, 'bad');
     hideBidPanel();
     renderPlayerAreas();
     broadcastState();
@@ -2664,6 +2664,10 @@ function highlightCurrentPlayer(idx) {
   if (area) area.querySelector('.player-label')?.classList.add('active');
 }
 
+function pName(idx) {
+  return NET.playerNames[idx] || `P${idx}`;
+}
+
 function log(msg, type = '') {
   if (!G.logEntries) G.logEntries = [];
   G.logEntries.push({ msg, type });
@@ -2845,13 +2849,13 @@ function handleClientMessage(conn, data) {
         G.bidPassed[playerIdx] = true;
         G.bidActed[playerIdx] = true;
         G.playerBids[playerIdx] = 'pass';
-        log(`Player ${playerIdx} passes.`);
+        log(`${pName(playerIdx)} passes.`);
       } else {
         G.highBid = { player: playerIdx, ...bid };
         G.bidActed[playerIdx] = true;
         G.playerBids[playerIdx] = bid;
         const bidStr = bid.isMarks ? `${bid.amount} mark(s)` : `${bid.amount}${bid.indication ? ' [IND]' : ''}`;
-        log(`Player ${playerIdx} bids ${bidStr} in ${TRUMP_NAMES[bid.trump]}.`, 'highlight');
+        log(`${pName(playerIdx)} bids ${bidStr} in ${TRUMP_NAMES[bid.trump]}.`, 'highlight');
       }
       G.awaitingPlayer = null;
       renderPlayerAreas();
@@ -2879,7 +2883,7 @@ function handleClientMessage(conn, data) {
         G.kitty[ki] = G.hands[playerIdx][hi];
         G.hands[playerIdx][hi] = tmp;
       });
-      log(`Player ${playerIdx} swaps ${ks.length} domino(es) with the kitty.`);
+      log(`${pName(playerIdx)} swaps ${ks.length} domino(es) with the kitty.`);
       hideKittyPanel();
       startPlay();
       break;
@@ -3857,10 +3861,10 @@ function createRoom() {
           playerNames: [...NET.playerNames],
           G: JSON.parse(JSON.stringify(G)),
         });
-        log(`Player ${seatIdx} reconnected mid-game.`, 'highlight');
+        log(`${pName(seatIdx)} reconnected mid-game.`, 'highlight');
       } else {
         conn.send({ type: 'state', G: JSON.parse(JSON.stringify(G)) });
-        log(`Player ${seatIdx} (remote) joined.`, 'highlight');
+        log(`${pName(seatIdx)} joined.`, 'highlight');
       }
 
       renderLobby();
@@ -4000,7 +4004,7 @@ document.getElementById('kitty-bar-confirm').addEventListener('click', () => {
     G.hands[NET.myIdx][hi] = tmp;
   });
 
-  log(`You swap ${ks.length} domino(es) with the kitty.`);
+  log(`${pName(NET.myIdx)} swaps ${ks.length} domino(es) with the kitty.`);
   hideKittyPanel();
   broadcastState();
   startPlay();
