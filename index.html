@@ -1586,7 +1586,10 @@ function advanceBid() {
 
 function checkBidEnd() {
   if (G.bidActed.every(a => a)) {
-    finishBidding();
+    // Render the final bid so it's visible, then pause before moving on
+    renderPlayerAreas();
+    renderBidInfo();
+    setTimeout(finishBidding, 2000);
     return;
   }
   nextBidder();
@@ -2088,7 +2091,7 @@ function renderPlayerAreas() {
     }
     area.appendChild(label);
 
-    if (G.phase === 'bid' && G.playerBids) {
+    if (G.playerBids && (G.phase === 'bid' || (G.phase === 'kitty' && p === G.bidWinner))) {
       const bidText = formatBidLabel(G.playerBids[p]);
       if (bidText) {
         const badge = document.createElement('div');
@@ -2126,7 +2129,8 @@ function renderPlayerAreas() {
     G.phase === 'play' ? 'Waiting for lead…' : '';
 
   const humanBidBadge = document.getElementById('human-bid-badge');
-  const humanBidText = (G.phase === 'bid' && G.playerBids) ? formatBidLabel(G.playerBids[NET.myIdx]) : null;
+  const showHumanBid = G.playerBids && (G.phase === 'bid' || (G.phase === 'kitty' && NET.myIdx === G.bidWinner));
+  const humanBidText = showHumanBid ? formatBidLabel(G.playerBids[NET.myIdx]) : null;
   if (humanBidText) {
     humanBidBadge.textContent = humanBidText;
     humanBidBadge.style.display = '';
