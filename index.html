@@ -2237,9 +2237,7 @@ function renderHumanHand() {
         half.style.cursor = 'pointer';
         half.addEventListener('click', (e) => {
           e.stopPropagation();
-          sortHandByNumber(G.hands[NET.myIdx], val);
-          G.handSortPip = val;
-          renderHumanHand();
+          selectBidTrump(val);
         });
       });
     }
