@@ -2091,7 +2091,7 @@ function renderPlayerAreas() {
     }
     area.appendChild(label);
 
-    if (G.playerBids && (G.phase === 'bid' || (G.phase === 'kitty' && p === G.bidWinner))) {
+    if (G.playerBids && (G.phase === 'bid' || (['kitty', 'play'].includes(G.phase) && p === G.bidWinner))) {
       const bidText = formatBidLabel(G.playerBids[p]);
       if (bidText) {
         const badge = document.createElement('div');
@@ -2129,7 +2129,7 @@ function renderPlayerAreas() {
     G.phase === 'play' ? 'Waiting for lead…' : '';
 
   const humanBidBadge = document.getElementById('human-bid-badge');
-  const showHumanBid = G.playerBids && (G.phase === 'bid' || (G.phase === 'kitty' && NET.myIdx === G.bidWinner));
+  const showHumanBid = G.playerBids && (G.phase === 'bid' || (['kitty', 'play'].includes(G.phase) && NET.myIdx === G.bidWinner));
   const humanBidText = showHumanBid ? formatBidLabel(G.playerBids[NET.myIdx]) : null;
   if (humanBidText) {
     humanBidBadge.textContent = humanBidText;
