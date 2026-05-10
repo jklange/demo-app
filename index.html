@@ -605,6 +605,14 @@
     }
     .indication-label:has(input:checked) { border-color: var(--gold); color: var(--gold); }
 
+    /* host bid-for bar */
+    #host-bid-for-bar {
+      display: flex;
+      align-items: center;
+      padding: 5px 16px;
+      min-height: 44px;
+    }
+
     /* kitty panel */
     #kitty-panel .kitty-dominoes {
       display: flex;
@@ -1051,6 +1059,9 @@
   </div>
   <div id="bid-summary-view">
     <div id="bid-summary-content"></div>
+  </div>
+  <div id="host-bid-for-bar" style="display:none">
+    <button class="btn btn-gold" id="host-bid-for-btn"></button>
   </div>
   <div id="kitty-bar" style="display:none">
     <span class="bid-bar-context">Kitty — click to swap (up to 2), then Confirm</span>
@@ -1528,6 +1539,8 @@ function startRound() {
 }
 
 function advanceBid() {
+  document.getElementById('host-bid-for-bar').style.display = 'none';
+
   if (G.bidActed[G.currentBidder]) {
     nextBidder();
     return;
@@ -1557,6 +1570,7 @@ function advanceBid() {
     G.awaitingPlayer = bidder;
     renderPlayerAreas();
     broadcastState();
+    if (isHost()) showHostBidForButton(bidder);
   } else {
     // AI bids (host runs this; clients never reach here)
     setTimeout(() => {
@@ -2342,26 +2356,34 @@ function showBidPanel() {
   overlay.classList.add('pulsing');
   document.getElementById('bid-bar').style.display = '';
   document.getElementById('bid-summary-view').style.display = 'none';
+  document.getElementById('host-bid-for-bar').style.display = 'none';
 
   const hb = G.highBid;
   const minNumeric = hb && !hb.isMarks ? hb.amount + 1 : 60;
   const hasHighMark = hb && hb.isMarks;
 
-  document.getElementById('bid-panel-context').textContent = '';
+  if (hostBidFor !== null) {
+    const forName = NET.playerNames[hostBidFor] || `P${hostBidFor}`;
+    document.getElementById('bid-panel-context').textContent = `Bidding for ${forName}`;
+  } else {
+    document.getElementById('bid-panel-context').textContent = '';
+  }
 
   const trumpOpts = document.getElementById('trump-options');
   trumpOpts.innerHTML = '';
   const myHand = G.hands[NET.myIdx];
   const hasPip = i => i === FOLLOW_ME || myHand.some(d => d.h === i || d.l === i);
-  if (G.handSortPip !== null && hasPip(G.handSortPip)) {
-    bidSelectedTrump = G.handSortPip;
-  } else if (!hasPip(bidSelectedTrump)) {
-    bidSelectedTrump = [0,1,2,3,4,5,6].find(i => hasPip(i)) ?? FOLLOW_ME;
+  if (hostBidFor === null) {
+    if (G.handSortPip !== null && hasPip(G.handSortPip)) {
+      bidSelectedTrump = G.handSortPip;
+    } else if (!hasPip(bidSelectedTrump)) {
+      bidSelectedTrump = [0,1,2,3,4,5,6].find(i => hasPip(i)) ?? FOLLOW_ME;
+    }
   }
   TRUMP_NAMES.forEach((name, i) => {
     const btn = document.createElement('button');
     btn.className = `trump-btn${i === bidSelectedTrump ? ' selected' : ''}${i === FOLLOW_ME ? ' follow-me' : ''}`;
-    if (i !== FOLLOW_ME && !hasPip(i)) btn.disabled = true;
+    if (hostBidFor === null && i !== FOLLOW_ME && !hasPip(i)) btn.disabled = true;
     btn.title = name;
     btn.textContent = i === FOLLOW_ME ? 'FM' : String(i);
     if (i === FOLLOW_ME) btn.style.fontStyle = 'italic';
@@ -2381,6 +2403,7 @@ function showBidPanel() {
   };
 
   document.getElementById('bid-submit').onclick = () => {
+    const forIdx = hostBidFor ?? NET.myIdx;
     const trump = bidSelectedTrump;
     const amount = parseInt(amountInput.value);
     const indication = document.getElementById('bid-indication')?.checked ?? false;
@@ -2395,10 +2418,11 @@ function showBidPanel() {
       return;
     }
 
-    G.highBid = { player: NET.myIdx, isMarks: false, amount, trump, indication };
-    G.bidActed[NET.myIdx] = true;
-    G.playerBids[NET.myIdx] = { isMarks: false, amount, trump, indication };
-    log(`${pName(NET.myIdx)} bids ${amount} in ${TRUMP_NAMES[trump]}${indication ? ' (Indication)' : ''}.`, 'highlight');
+    G.highBid = { player: forIdx, isMarks: false, amount, trump, indication };
+    G.bidActed[forIdx] = true;
+    G.playerBids[forIdx] = { isMarks: false, amount, trump, indication };
+    log(`${pName(forIdx)} bids ${amount} in ${TRUMP_NAMES[trump]}${indication ? ' (Indication)' : ''}.`, 'highlight');
+    hostBidFor = null;
     hideBidPanel();
     renderPlayerAreas();
     broadcastState();
@@ -2415,6 +2439,7 @@ function showBidPanel() {
     btn.className = 'mark-bid-btn';
     btn.textContent = `${m} mark${m > 1 ? 's' : ''}`;
     btn.addEventListener('click', () => {
+      const forIdx = hostBidFor ?? NET.myIdx;
       const trump = bidSelectedTrump;
 
       if (NET.mode === 'client') {
@@ -2424,10 +2449,11 @@ function showBidPanel() {
         return;
       }
 
-      G.highBid = { player: NET.myIdx, isMarks: true, amount: m, trump };
-      G.bidActed[NET.myIdx] = true;
-      G.playerBids[NET.myIdx] = { isMarks: true, amount: m, trump };
-      log(`${pName(NET.myIdx)} bids ${m} mark(s) in ${TRUMP_NAMES[trump]}.`, 'highlight');
+      G.highBid = { player: forIdx, isMarks: true, amount: m, trump };
+      G.bidActed[forIdx] = true;
+      G.playerBids[forIdx] = { isMarks: true, amount: m, trump };
+      log(`${pName(forIdx)} bids ${m} mark(s) in ${TRUMP_NAMES[trump]}.`, 'highlight');
+      hostBidFor = null;
       hideBidPanel();
       renderPlayerAreas();
       broadcastState();
@@ -2437,8 +2463,9 @@ function showBidPanel() {
   });
 
   document.getElementById('bid-pass').onclick = () => {
-    if (!G.highBid && G.bidStartIdx === NET.myIdx) {
-      const others = G.bidPassed.filter((p, i) => i !== NET.myIdx && !p).length;
+    const forIdx = hostBidFor ?? NET.myIdx;
+    if (!G.highBid && G.bidStartIdx === forIdx) {
+      const others = G.bidPassed.filter((p, i) => i !== forIdx && !p).length;
       if (others === 0) { alert('You must bid at least 60 — no one else bid!'); return; }
     }
 
@@ -2449,17 +2476,18 @@ function showBidPanel() {
       return;
     }
 
-    G.bidPassed[NET.myIdx] = true;
-    G.bidActed[NET.myIdx] = true;
-    G.playerBids[NET.myIdx] = 'pass';
-    log(`${pName(NET.myIdx)} passes.`, 'bad');
+    G.bidPassed[forIdx] = true;
+    G.bidActed[forIdx] = true;
+    G.playerBids[forIdx] = 'pass';
+    log(`${pName(forIdx)} passes.`, 'bad');
+    hostBidFor = null;
     hideBidPanel();
     renderPlayerAreas();
     broadcastState();
     checkBidEnd();
   };
 
-  renderBidPanelHand();
+  if (hostBidFor === null) renderBidPanelHand();
 }
 
 function renderBidPanelHand() {
@@ -2558,6 +2586,8 @@ function hideBidPanel() {
   document.getElementById('bid-bar').style.display = 'none';
   document.getElementById('bid-summary-view').style.display = 'none';
   document.getElementById('bid-summary-content').innerHTML = '';
+  document.getElementById('host-bid-for-bar').style.display = 'none';
+  hostBidFor = null;
 }
 
 function hideBidControls() {
@@ -2568,12 +2598,13 @@ function hideBidControls() {
 let kittyState = { kittySelected: [], handSelected: [] };
 
 let bidSelectedTrump = 0;
+let hostBidFor = null; // player index the host is bidding on behalf of, or null
 function selectBidTrump(i) {
   bidSelectedTrump = i;
   const trumpOpts = document.getElementById('trump-options');
   if (!trumpOpts) return;
   trumpOpts.querySelectorAll('.trump-btn').forEach((b, idx) => b.classList.toggle('selected', idx === i));
-  if (i !== FOLLOW_ME) {
+  if (i !== FOLLOW_ME && hostBidFor === null) {
     sortHandByNumber(G.hands[NET.myIdx], i);
     G.handSortPip = i;
     renderBidPanelHand();
@@ -2821,6 +2852,22 @@ function renderHostControls() {
       redoList.appendChild(row);
     });
   }
+}
+
+function showHostBidForButton(bidderIdx) {
+  const overlay = document.getElementById('bid-overlay');
+  overlay.classList.remove('hidden', 'pulsing');
+  document.getElementById('bid-bar').style.display = 'none';
+  const bar = document.getElementById('host-bid-for-bar');
+  bar.style.display = '';
+  const btn = document.getElementById('host-bid-for-btn');
+  const name = NET.playerNames[bidderIdx] || `P${bidderIdx}`;
+  btn.textContent = `Bid for ${name}`;
+  btn.onclick = () => {
+    hostBidFor = bidderIdx;
+    bar.style.display = 'none';
+    showBidPanel();
+  };
 }
 
 function hostRedoBid(playerIdx) {
