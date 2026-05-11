@@ -1387,11 +1387,27 @@ function formatBidLabel(bid) {
 function aiChooseBid(playerIdx) {
   const hand = G.hands[playerIdx];
   const highBid = G.highBid;
+  const myTeam = TEAM[playerIdx];
 
-  let bestSuit = 0, bestCount = 0;
+  // Suits opponents have already bid — avoid bidding into them
+  const opponentSuits = new Set(
+    G.playerBids
+      .map((b, i) => (b && b !== 'pass' && TEAM[i] !== myTeam && !b.isMarks) ? b.trump : null)
+      .filter(t => t !== null)
+  );
+
+  let bestSuit = -1, bestCount = 0;
   for (let t = 0; t <= 6; t++) {
+    if (opponentSuits.has(t)) continue;
     const cnt = hand.filter(d => isTrump(d, t)).length;
     if (cnt > bestCount) { bestCount = cnt; bestSuit = t; }
+  }
+  // Fallback: all suits claimed by opponents (won't happen with ≤3 opponents and 7 suits)
+  if (bestSuit === -1) {
+    for (let t = 0; t <= 6; t++) {
+      const cnt = hand.filter(d => isTrump(d, t)).length;
+      if (cnt > bestCount) { bestCount = cnt; bestSuit = t; }
+    }
   }
 
   const countPts = hand.reduce((s, d) => s + dominoPoints(d), 0);
