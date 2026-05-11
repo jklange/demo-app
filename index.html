@@ -1473,35 +1473,20 @@ function aiFollowDomino(playerIdx) {
 }
 
 function aiKittyChoice(playerIdx) {
-  const hand = [...G.hands[playerIdx]];
-  const kitty = [...G.kitty];
   const trump = G.trump;
+  const all = [...G.hands[playerIdx], ...G.kitty];
 
-  kitty.forEach((k, ki) => {
-    if (isTrump(k, trump)) {
-      const nonTrumps = hand.filter(d => !isTrump(d, trump)).sort((a, b) => dominoPoints(a) - dominoPoints(b));
-      if (nonTrumps.length > 0) {
-        const idx = hand.indexOf(nonTrumps[0]);
-        G.kitty[ki] = hand[idx];
-        hand[idx] = k;
-      }
-    }
-  });
+  // Higher score = keep; lower score = discard
+  function keepScore(d) {
+    if (isTrump(d, trump)) return 1000 + trumpRank(d, trump);
+    if (d.h === d.l) return 100 + d.h + d.l;      // non-trump double
+    if (dominoPoints(d) > 0) return 50 + dominoPoints(d); // count non-double
+    return d.h + d.l;                               // worthless: lower pips = discard first
+  }
 
-  kitty.forEach((k, ki) => {
-    if (dominoPoints(k) > 0 && dominoPoints(G.kitty[ki]) === 0) return;
-    if (dominoPoints(G.kitty[ki]) > 0) {
-      const nonCounts = hand.filter(d => !isTrump(d, trump) && dominoPoints(d) === 0).sort((a, b) => a.h - b.h);
-      if (nonCounts.length > 0) {
-        const idx = hand.indexOf(nonCounts[0]);
-        const tmp = G.kitty[ki];
-        G.kitty[ki] = hand[idx];
-        hand[idx] = tmp;
-      }
-    }
-  });
-
-  G.hands[playerIdx] = hand;
+  all.sort((a, b) => keepScore(b) - keepScore(a));
+  G.hands[playerIdx] = all.slice(0, 7);
+  G.kitty = all.slice(7);
 }
 
 // ─────────────────────────────────────────────
