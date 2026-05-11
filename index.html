@@ -1236,6 +1236,7 @@ let G = {};
 let turnDotTimers = {};   // keyed by player index (includes NET.myIdx)
 let turnDotVisible = new Set(); // players whose dot delay has elapsed
 let preMove = null; // domino pre-selected by human to auto-play on their next turn
+let handSortPip = null; // null = default sort, number = sorted by that pip (local only, not shared state)
 
 function initGame(restore = null) {
   G = {
@@ -1259,7 +1260,6 @@ function initGame(restore = null) {
     awaitingPlayer: null,  // logical player index who should act, or null
     trickInProgress: false,
     trickResolveId: 0,
-    handSortPip: null,  // null = default sort, number = sorted by that pip
     logEntries: [],
   };
   startRound();
@@ -1530,7 +1530,7 @@ function startRound() {
   deal();
   const defaultPip = bestDefaultSortPip(G.hands[NET.myIdx]);
   sortHandByNumber(G.hands[NET.myIdx], defaultPip);
-  G.handSortPip = defaultPip;
+  handSortPip = defaultPip;
   log(`Round ${G.roundNum} begins. Bid starts with ${pName(G.bidStartIdx)}.`, 'highlight');
 
   G.phase = 'bid';
@@ -1701,7 +1701,7 @@ function startPlay() {
   G.trickLeader = G.bidWinner;
   G.currentTrick = [];
   for (let i = 0; i < 6; i++) sortHand(G.hands[i], G.trump);
-  G.handSortPip = null;
+  handSortPip = null;
   renderAll();
   advanceTrick();
 }
@@ -2173,7 +2173,7 @@ function renderTrickArea() {
 }
 
 function handGroupKey(d) {
-  const n = G.handSortPip;
+  const n = handSortPip;
   if (n !== null) {
     if (d.h === n || d.l === n) return 0;
     if (d.h === d.l) return 1;
@@ -2374,8 +2374,8 @@ function showBidPanel() {
   const myHand = G.hands[NET.myIdx];
   const hasPip = i => i === FOLLOW_ME || myHand.some(d => d.h === i || d.l === i);
   if (hostBidFor === null) {
-    if (G.handSortPip !== null && hasPip(G.handSortPip)) {
-      bidSelectedTrump = G.handSortPip;
+    if (handSortPip !== null && hasPip(handSortPip)) {
+      bidSelectedTrump = handSortPip;
     } else if (!hasPip(bidSelectedTrump)) {
       bidSelectedTrump = [0,1,2,3,4,5,6].find(i => hasPip(i)) ?? FOLLOW_ME;
     }
@@ -2512,7 +2512,7 @@ function renderBidPanelHand() {
       half.addEventListener('click', (e) => {
         e.stopPropagation();
         sortHandByNumber(G.hands[NET.myIdx], val);
-        G.handSortPip = val;
+        handSortPip = val;
         selectBidTrump(val);
         renderBidPanelHand();
         renderHumanHand();
@@ -2606,7 +2606,7 @@ function selectBidTrump(i) {
   trumpOpts.querySelectorAll('.trump-btn').forEach((b, idx) => b.classList.toggle('selected', idx === i));
   if (i !== FOLLOW_ME && hostBidFor === null) {
     sortHandByNumber(G.hands[NET.myIdx], i);
-    G.handSortPip = i;
+    handSortPip = i;
     renderBidPanelHand();
     renderHumanHand();
   }
@@ -3072,8 +3072,14 @@ function handleHostMessage(data) {
       renderPlayerAreas();
       renderScoreBar();
       break;
-    case 'state':
+    case 'state': {
+      const prevPhase = G.phase;
+      const prevRound = G.roundNum;
       G = data.G;
+      // Reset local hand sort when a new round starts or play phase begins
+      if (G.roundNum !== prevRound || (G.phase === 'play' && prevPhase !== 'play')) {
+        handSortPip = null;
+      }
       renderAll();
       // Show UI prompts if it's this client's turn
       if (G.phase === 'score') {
@@ -3105,6 +3111,7 @@ function handleHostMessage(data) {
       }
       // play turn is handled by renderHumanHand showing highlighted tiles
       break;
+    }
     case 'gameStart':
       NET.playerTypes = data.playerTypes;
       NET.playerNames = data.playerNames;
