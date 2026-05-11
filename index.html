@@ -1396,6 +1396,7 @@ function aiChooseBid(playerIdx) {
       .filter(t => t !== null)
   );
 
+  // Find AI's own best available suit
   let bestSuit = -1, bestCount = 0;
   for (let t = 0; t <= 6; t++) {
     if (opponentSuits.has(t)) continue;
@@ -1410,33 +1411,53 @@ function aiChooseBid(playerIdx) {
     }
   }
 
+  // Consider supporting a partner's suit if we hold 2+ trumps including a high one
+  let supportSuit = -1, supportCount = 0;
+  for (let i = 0; i < 6; i++) {
+    const b = G.playerBids[i];
+    if (!b || b === 'pass' || b.isMarks || TEAM[i] !== myTeam) continue;
+    const t = b.trump;
+    if (opponentSuits.has(t)) continue;
+    const cnt = hand.filter(d => isTrump(d, t)).length;
+    const highTrumps = hand.filter(d => isTrump(d, t) && (d.h === d.l || trumpRank(d, t) >= 5)).length;
+    if (cnt >= 2 && highTrumps >= 1 && cnt > supportCount) {
+      supportSuit = t;
+      supportCount = cnt;
+    }
+  }
+
+  // Use partner's suit when it's within 1 trump of our own best suit
+  const useSupport = supportSuit !== -1 && supportCount >= bestCount - 1;
+  const chosenSuit = useSupport ? supportSuit : bestSuit;
+  const chosenCount = useSupport ? supportCount : bestCount;
+
   const countPts = hand.reduce((s, d) => s + dominoPoints(d), 0);
-  const strength = bestCount * 8 + countPts;
+  const strength = chosenCount * 8 + countPts;
 
   if (highBid && highBid.isMarks) {
     const nextMark = highBid.amount + 1;
-    if (nextMark <= 7 && bestCount >= 7 && countPts >= 20) {
-      return { isMarks: true, amount: nextMark, trump: bestSuit };
+    if (nextMark <= 7 && chosenCount >= 7 && countPts >= 20) {
+      return { isMarks: true, amount: nextMark, trump: chosenSuit };
     }
     return null;
   }
 
   const minBid = highBid ? highBid.amount + 1 : 60;
   if (minBid > 87) {
-    if (bestCount >= 7) {
-      return { isMarks: true, amount: 1, trump: bestSuit };
+    if (chosenCount >= 7) {
+      return { isMarks: true, amount: 1, trump: chosenSuit };
     }
     return null;
   }
 
   let bidAmount = 60;
-  if (strength >= 60) bidAmount = 84;
-  else if (strength >= 50) bidAmount = 78;
-  else if (strength >= 40) bidAmount = 72;
-  else if (strength >= 30) bidAmount = 66;
+  if (strength >= 80) bidAmount = 84;
+  else if (strength >= 63) bidAmount = 78;
+  else if (strength >= 48) bidAmount = 72;
+  else if (strength >= 35) bidAmount = 66;
 
   if (bidAmount < minBid) return null;
-  return { isMarks: false, amount: bidAmount, trump: bestSuit };
+  return { isMarks: false, amount: bidAmount, trump: chosenSuit };
 }
 
 // ─────────────────────────────────────────────
