@@ -1536,8 +1536,9 @@ function aiKittyChoice(playerIdx) {
   }
 
   all.sort((a, b) => keepScore(b) - keepScore(a));
-  G.hands[playerIdx] = all.slice(0, 7);
-  G.kitty = all.slice(7);
+  const handSize = G.hands[playerIdx].length;  // 9 (not 7 — 6 players × 9 each + 2 kitty = 56)
+  G.hands[playerIdx] = all.slice(0, handSize);
+  G.kitty = all.slice(handSize);
 }
 
 // ─────────────────────────────────────────────
