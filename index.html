@@ -1492,8 +1492,10 @@ function aiFollowDomino(playerIdx) {
   }
 
   if (partnerWinning) {
-    const sorted = [...legal].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h));
-    return sorted[0];
+    // Dump the highest count onto our winning trick; otherwise play lowest card
+    const counts = [...legal].filter(d => dominoPoints(d) > 0).sort((a, b) => dominoPoints(b) - dominoPoints(a));
+    if (counts.length > 0) return counts[0];
+    return [...legal].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h))[0];
   }
 
   const winning = legal.filter(d => {
@@ -1502,11 +1504,12 @@ function aiFollowDomino(playerIdx) {
     return hypo[w].player === playerIdx;
   });
   if (winning.length > 0) {
-    const sorted = winning.sort((a, b) => dominoPoints(a) - dominoPoints(b));
-    return sorted[0];
+    // Win with the highest count we can; if no count wins, use weakest winning card
+    const winCounts = winning.filter(d => dominoPoints(d) > 0).sort((a, b) => dominoPoints(b) - dominoPoints(a));
+    if (winCounts.length > 0) return winCounts[0];
+    return winning.sort((a, b) => dominoPoints(a) - dominoPoints(b))[0];
   }
-  const sorted = [...legal].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h));
-  return sorted[0];
+  return [...legal].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h))[0];
 }
 
 function aiKittyChoice(playerIdx) {
