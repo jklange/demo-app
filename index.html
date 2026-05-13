@@ -1589,8 +1589,41 @@ function aiKittyChoice(playerIdx) {
 
   all.sort((a, b) => keepScore(b) - keepScore(a));
   const handSize = G.hands[playerIdx].length;  // 9 (not 7 — 6 players × 9 each + 2 kitty = 56)
-  G.hands[playerIdx] = all.slice(0, handSize);
-  G.kitty = all.slice(handSize);
+  const kept  = all.slice(0, handSize);
+  const kitty = all.slice(handSize);
+
+  // Rule: never bury a count when a worthless card (non-trump, non-double, non-count)
+  // is still sitting in the kept hand — swap them so worthless is always discarded first.
+  for (let ki = 0; ki < kitty.length; ki++) {
+    if (dominoPoints(kitty[ki]) === 0) continue;
+    const wi = kept.findIndex(d => !isTrump(d, trump) && d.h !== d.l && dominoPoints(d) === 0);
+    if (wi !== -1) [kept[wi], kitty[ki]] = [kitty[ki], kept[wi]];
+  }
+
+  // Rule: never bury a count that would make the bid impossible for the declaring team.
+  // Rescue the highest-value buried count by swapping it with the lowest-keepScore
+  // non-count card in kept (prefers sacrificing a low double over a low trump).
+  if (G.highBid && TEAM[G.highBid.player] === TEAM[playerIdx]) {
+    for (let pass = 0; pass < 2; pass++) {
+      const buriedPts = kitty.reduce((s, d) => s + dominoPoints(d), 0);
+      if (88 - buriedPts >= G.highBid.amount) break; // bid is still achievable
+
+      const countKi = kitty.reduce(
+        (best, d, i) => dominoPoints(d) > (best >= 0 ? dominoPoints(kitty[best]) : 0) ? i : best, -1
+      );
+      if (countKi === -1) break;
+
+      const swapHi = kept.reduce(
+        (best, d, i) => dominoPoints(d) === 0 && (best === -1 || keepScore(d) < keepScore(kept[best])) ? i : best, -1
+      );
+      if (swapHi === -1) break; // nothing non-count left to sacrifice
+
+      [kept[swapHi], kitty[countKi]] = [kitty[countKi], kept[swapHi]];
+    }
+  }
+
+  G.hands[playerIdx] = kept;
+  G.kitty = kitty;
 }
 
 // ─────────────────────────────────────────────
