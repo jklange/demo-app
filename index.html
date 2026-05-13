@@ -1493,10 +1493,14 @@ function aiLeadDomino(playerIdx) {
   const trump = G.trump;
   const myTeam = TEAM[playerIdx];
 
+  // Don't play trump when a teammate holds the bid, unless the hand has nothing but trumps and doubles
+  const avoidTrump = G.highBid && TEAM[G.bidWinner] === myTeam && G.bidWinner !== playerIdx
+                     && !hand.every(d => isTrump(d, trump) || d.h === d.l);
+
   const trumps = legal.filter(d => isTrump(d, trump)).sort((a, b) => trumpRank(b, trump) - trumpRank(a, trump));
   const nonTrumps = legal.filter(d => !isTrump(d, trump));
 
-  if (trumps.length > 0) {
+  if (trumps.length > 0 && !avoidTrump) {
     const opponentHasTrump = G.hands.some((h, i) => TEAM[i] !== myTeam && h.some(d => isTrump(d, trump)));
 
     if (opponentHasTrump) {
@@ -1532,26 +1536,34 @@ function aiLeadDomino(playerIdx) {
 
 function aiFollowDomino(playerIdx) {
   const legal = legalPlays(playerIdx);
+  const hand = G.hands[playerIdx];
+  const trump = G.trump;
   const myTeam = TEAM[playerIdx];
   const trick = G.currentTrick;
 
+  // Don't play trump when a teammate holds the bid, unless nothing else is available
+  const avoidTrump = G.highBid && TEAM[G.bidWinner] === myTeam && G.bidWinner !== playerIdx
+                     && !hand.every(d => isTrump(d, trump) || d.h === d.l);
+  const nonTrumpLegal = legal.filter(d => !isTrump(d, trump));
+  const pool = avoidTrump && nonTrumpLegal.length > 0 ? nonTrumpLegal : legal;
+
   let partnerWinning = false;
   if (trick.length > 0) {
-    const winnerIdx = trickWinner(trick, G.trump);
+    const winnerIdx = trickWinner(trick, trump);
     const winnerPlayer = trick[winnerIdx].player;
     partnerWinning = TEAM[winnerPlayer] === myTeam;
   }
 
   if (partnerWinning) {
     // Dump the highest count onto our winning trick; otherwise play lowest card
-    const counts = [...legal].filter(d => dominoPoints(d) > 0).sort((a, b) => dominoPoints(b) - dominoPoints(a));
+    const counts = [...pool].filter(d => dominoPoints(d) > 0).sort((a, b) => dominoPoints(b) - dominoPoints(a));
     if (counts.length > 0) return counts[0];
-    return [...legal].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h))[0];
+    return [...pool].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h))[0];
   }
 
-  const winning = legal.filter(d => {
+  const winning = pool.filter(d => {
     const hypo = [...trick, { player: playerIdx, domino: d }];
-    const w = trickWinner(hypo, G.trump);
+    const w = trickWinner(hypo, trump);
     return hypo[w].player === playerIdx;
   });
   if (winning.length > 0) {
@@ -1560,7 +1572,7 @@ function aiFollowDomino(playerIdx) {
     if (winCounts.length > 0) return winCounts[0];
     return winning.sort((a, b) => dominoPoints(a) - dominoPoints(b))[0];
   }
-  return [...legal].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h))[0];
+  return [...pool].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h))[0];
 }
 
 function aiKittyChoice(playerIdx) {
