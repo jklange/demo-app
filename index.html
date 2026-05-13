@@ -1471,6 +1471,10 @@ function aiChooseBid(playerIdx) {
   const hasDouble = hand.some(d => d.h === chosenSuit && d.l === chosenSuit);
   if (!hasDouble && !useSupport && bidAmount > 67) bidAmount = 67;
 
+  // Bidding last — no one can raise after us, so the minimum winning bid is enough
+  const isLastBidder = G.bidActed.every((acted, i) => i === playerIdx || acted);
+  if (isLastBidder && bidAmount > minBid) bidAmount = minBid;
+
   if (bidAmount < minBid) return null;
   return { isMarks: false, amount: bidAmount, trump: chosenSuit };
 }
