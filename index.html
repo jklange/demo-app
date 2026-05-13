@@ -1509,14 +1509,19 @@ function aiLeadDomino(playerIdx) {
       // Must still play trump if no non-trump exists in hand.
       if (nonTrumps.length === 0) return trumps[trumps.length - 1]; // lowest trump
 
-      // Exception: teammate has a higher trump and we have nothing worthwhile to lead —
+      // Lead non-trump doubles first — they guarantee their suit and shouldn't
+      // be held back while lesser cards get played.
+      const nonTrumpDoubles = nonTrumps.filter(d => d.h === d.l).sort((a, b) => b.h - a.h);
+      if (nonTrumpDoubles.length > 0) return nonTrumpDoubles[0];
+
+      // Exception: teammate has a higher trump and we have no worthwhile non-trump —
       // lead our lowest trump so the teammate wins the trick cleanly.
       const myTopRank = trumpRank(trumps[0], trump);
       const teammateHasHigher = G.hands.some((h, i) =>
         TEAM[i] === myTeam && i !== playerIdx &&
         h.some(d => isTrump(d, trump) && trumpRank(d, trump) > myTopRank)
       );
-      const hasGoodNonTrump = nonTrumps.some(d => dominoPoints(d) > 0 || d.h === d.l);
+      const hasGoodNonTrump = nonTrumps.some(d => dominoPoints(d) > 0);
       if (teammateHasHigher && !hasGoodNonTrump) return trumps[trumps.length - 1];
     }
   }
