@@ -1462,14 +1462,14 @@ function aiChooseBid(playerIdx) {
   }
 
   let bidAmount = 60;
-  if (strength >= 80) bidAmount = 84;
-  else if (strength >= 63) bidAmount = 78;
-  else if (strength >= 48) bidAmount = 72;
-  else if (strength >= 35) bidAmount = 66;
+  if (strength >= 80) bidAmount = 81;
+  else if (strength >= 63) bidAmount = 77;
+  else if (strength >= 48) bidAmount = 71;
+  else if (strength >= 35) bidAmount = 67;
 
-  // Without at least one double of the trump suit, cap at 66 unless supporting a teammate's suit
+  // Without at least one double of the trump suit, cap at 67 unless supporting a teammate's suit
   const hasDouble = hand.some(d => d.h === chosenSuit && d.l === chosenSuit);
-  if (!hasDouble && !useSupport && bidAmount > 66) bidAmount = 66;
+  if (!hasDouble && !useSupport && bidAmount > 67) bidAmount = 67;
 
   if (bidAmount < minBid) return null;
   return { isMarks: false, amount: bidAmount, trump: chosenSuit };
