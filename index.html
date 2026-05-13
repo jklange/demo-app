@@ -1482,10 +1482,37 @@ function legalPlays(playerIdx) {
 function aiLeadDomino(playerIdx) {
   const hand = G.hands[playerIdx];
   const legal = legalPlays(playerIdx);
-  const trumps = legal.filter(d => isTrump(d, G.trump)).sort((a, b) => trumpRank(b, G.trump) - trumpRank(a, G.trump));
-  if (trumps.length > 0 && trumps.length >= hand.filter(d => isTrump(d, G.trump)).length * 0.5) {
-    return trumps[0];
+  const trump = G.trump;
+  const myTeam = TEAM[playerIdx];
+
+  const trumps = legal.filter(d => isTrump(d, trump)).sort((a, b) => trumpRank(b, trump) - trumpRank(a, trump));
+  const nonTrumps = legal.filter(d => !isTrump(d, trump));
+
+  if (trumps.length > 0) {
+    const opponentHasTrump = G.hands.some((h, i) => TEAM[i] !== myTeam && h.some(d => isTrump(d, trump)));
+
+    if (opponentHasTrump) {
+      // Opponents still have trump — lead highest trump when trump-heavy
+      if (trumps.length >= hand.filter(d => isTrump(d, trump)).length * 0.5) {
+        return trumps[0];
+      }
+    } else {
+      // Only our team has trump; leading trump just drains our own reserve.
+      // Must still play trump if no non-trump exists in hand.
+      if (nonTrumps.length === 0) return trumps[trumps.length - 1]; // lowest trump
+
+      // Exception: teammate has a higher trump and we have nothing worthwhile to lead —
+      // lead our lowest trump so the teammate wins the trick cleanly.
+      const myTopRank = trumpRank(trumps[0], trump);
+      const teammateHasHigher = G.hands.some((h, i) =>
+        TEAM[i] === myTeam && i !== playerIdx &&
+        h.some(d => isTrump(d, trump) && trumpRank(d, trump) > myTopRank)
+      );
+      const hasGoodNonTrump = nonTrumps.some(d => dominoPoints(d) > 0 || d.h === d.l);
+      if (teammateHasHigher && !hasGoodNonTrump) return trumps[trumps.length - 1];
+    }
   }
+
   const sorted = [...legal].sort((a, b) => (dominoPoints(b) - dominoPoints(a)) || (b.h - a.h));
   return sorted[0];
 }
