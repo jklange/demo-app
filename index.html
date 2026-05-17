@@ -1482,10 +1482,15 @@ function aiChooseBid(playerIdx) {
   const chosenSuit = useSupport ? supportSuit : bestSuit;
   const chosenCount = useSupport ? supportCount : bestCount;
 
-  // Component 1: weighted trump quality — double (rank 20) highest, trump-blank (rank 0) lowest
+  // Component 1: exponential trump quality
+  // double=2^6(64), trump-6=2^5(32), trump-5=2^4(16), ..., trump-1=2^0(1), trump-blank=0
   const trumpTiles = hand.filter(d => isTrump(d, chosenSuit));
-  const trumpWeightRaw = trumpTiles.reduce((s, d) => s + trumpRank(d, chosenSuit), 0);
-  const trumpWeightNorm = trumpWeightRaw / 70; // practical ceiling ~61–66; 70 gives headroom
+  const trumpWeightRaw = trumpTiles.reduce((s, d) => {
+    if (d.h === chosenSuit && d.l === chosenSuit) return s + 64; // double: 2^6
+    const rank = trumpRank(d, chosenSuit); // 1–6 for non-doubles, 0 for trump-blank
+    return s + (rank > 0 ? Math.pow(2, rank - 1) : 0);
+  }, 0);
+  const trumpWeightNorm = trumpWeightRaw / 200; // ceiling for realistic hands (2 doubles + high ranks)
 
   // Component 2: trump count
   const trumpCountNorm = trumpTiles.length / 9;
