@@ -2909,7 +2909,7 @@ function showHandsInResult() {
     tiles.className = 'result-hand-tiles';
     (hands[i] || []).forEach(d => {
       const domEl = buildDomino(d, false, false, G.trump !== null && isTrump(d, G.trump));
-      domEl.classList.add('mini');
+      domEl.classList.add('kitty-size');
       tiles.appendChild(domEl);
     });
 
