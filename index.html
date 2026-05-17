@@ -660,8 +660,16 @@
     }
     #result-panel .result-table td:first-child { color: var(--muted); }
 
+    /* side-by-side layout when hands are open */
+    #result-left { display: flex; flex-direction: column; gap: 16px; min-width: 280px; }
+    #result-panel.hands-open {
+      flex-direction: row;
+      align-items: flex-start;
+      max-width: min(96vw, 1100px);
+      gap: 24px;
+    }
     /* show-hands rows inside result panel */
-    #result-hands { display: flex; flex-direction: column; gap: 10px; }
+    #result-hands { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 75vh; }
     #result-hands.hidden { display: none; }
     .result-hand-row {
       display: flex;
@@ -1114,12 +1122,14 @@
 <!-- ROUND RESULT OVERLAY -->
 <div class="overlay hidden" id="result-overlay">
   <div class="panel" id="result-panel">
-    <h2 id="result-title">Round Over</h2>
-    <p id="result-summary"></p>
-    <table class="result-table" id="result-table"></table>
-    <button class="btn btn-muted" id="result-show-hands" style="display:none">Show Hands</button>
+    <div id="result-left">
+      <h2 id="result-title">Round Over</h2>
+      <p id="result-summary"></p>
+      <table class="result-table" id="result-table"></table>
+      <button class="btn btn-muted" id="result-show-hands" style="display:none">Show Hands</button>
+      <button class="btn btn-primary" id="result-continue">Next Round</button>
+    </div>
     <div id="result-hands" class="hidden"></div>
-    <button class="btn btn-primary" id="result-continue">Next Round</button>
   </div>
 </div>
 
@@ -2887,6 +2897,7 @@ function showResultPanel(marksWon) {
   const handsDiv = document.getElementById('result-hands');
   handsDiv.innerHTML = '';
   handsDiv.classList.add('hidden');
+  document.getElementById('result-panel').classList.remove('hands-open');
   showHandsBtn.textContent = 'Show Hands';
   showHandsBtn.style.display = (NET.mode === 'host' || NET.mode === 'local') ? '' : 'none';
 }
@@ -2895,6 +2906,7 @@ function showHandsInResult() {
   const handsDiv = document.getElementById('result-hands');
   handsDiv.innerHTML = '';
   handsDiv.classList.remove('hidden');
+  document.getElementById('result-panel').classList.add('hands-open');
   document.getElementById('result-show-hands').textContent = 'Hide Hands';
 
   const hands = G.lastRoundHands;
@@ -3358,6 +3370,7 @@ function handleHostMessage(data) {
       break;
     case 'hideHands':
       document.getElementById('result-hands').classList.add('hidden');
+      document.getElementById('result-panel').classList.remove('hands-open');
       break;
   }
 }
@@ -4471,6 +4484,7 @@ document.getElementById('result-show-hands').addEventListener('click', () => {
     showHandsInResult();
   } else {
     handsDiv.classList.add('hidden');
+    document.getElementById('result-panel').classList.remove('hands-open');
     document.getElementById('result-show-hands').textContent = 'Show Hands';
     if (NET.mode === 'host') {
       Object.values(NET.connections).forEach(conn => {
