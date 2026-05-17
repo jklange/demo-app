@@ -4148,10 +4148,11 @@ function createRoom() {
 
   NET.peer.on('connection', (conn) => {
     conn.on('open', () => {
-      // Find seat: during resume, honor the client's claimed seat if it's still open
+      // Find seat: honor the client's claimed seat if it's still open (covers both
+      // mid-game reconnects and saved-game resumes); otherwise take the next open seat.
       let seatIdx = -1;
       const claimed = conn.metadata?.claimedSeat;
-      if (NET.savedState && claimed > 0 && NET.playerTypes[claimed] === 'open') {
+      if (claimed > 0 && NET.playerTypes[claimed] === 'open') {
         seatIdx = claimed;
       } else {
         seatIdx = Object.entries(NET.playerTypes).findIndex(([i, t]) => parseInt(i) > 0 && t === 'open');
