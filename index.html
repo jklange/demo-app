@@ -3200,9 +3200,12 @@ function handleHostMessage(data) {
       const prevPhase = G.phase;
       const prevRound = G.roundNum;
       G = data.G;
-      // Reset local hand sort when a new round starts or play phase begins
+      // Reset local hand sort when a new round starts or play phase begins;
+      // otherwise re-apply the player's sort since G overwrites their local hand order.
       if (G.roundNum !== prevRound || (G.phase === 'play' && prevPhase !== 'play')) {
         handSortPip = null;
+      } else if (handSortPip !== null) {
+        sortHandByNumber(G.hands[NET.myIdx], handSortPip);
       }
       renderAll();
       // Show UI prompts if it's this client's turn
