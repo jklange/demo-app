@@ -1481,8 +1481,28 @@ function aiChooseBid(playerIdx) {
   const chosenSuit = useSupport ? supportSuit : bestSuit;
   const chosenCount = useSupport ? supportCount : bestCount;
 
+  // Component 1: weighted trump quality — double (rank 20) highest, trump-blank (rank 0) lowest
+  const trumpTiles = hand.filter(d => isTrump(d, chosenSuit));
+  const trumpWeightRaw = trumpTiles.reduce((s, d) => s + trumpRank(d, chosenSuit), 0);
+  const trumpWeightNorm = trumpWeightRaw / 70; // practical ceiling ~61–66; 70 gives headroom
+
+  // Component 2: trump count
+  const trumpCountNorm = trumpTiles.length / 9;
+
+  // Component 3: all doubles (each guarantees its suit, trump or not)
+  const doubleCount = hand.filter(d => d.h === d.l).length;
+  const doubleCountNorm = doubleCount / 7; // max 7 unique doubles in a hand
+
+  // Equal-weight average on a 0–100 scale
+  const baseStrength = ((trumpWeightNorm + trumpCountNorm + doubleCountNorm) / 3) * 100;
+
+  // Penalty: non-double-5 count tiles are liabilities opponents can capture.
+  // 5-5 is exempt — it's a double and fully controlled.
+  const riskyCountTiles = hand.filter(d => dominoPoints(d) > 0 && !(d.h === 5 && d.l === 5));
+  const strength = baseStrength - riskyCountTiles.length * 3;
+
+  // countPts still needed for Marks bid threshold below
   const countPts = hand.reduce((s, d) => s + dominoPoints(d), 0);
-  const strength = chosenCount * 8 + countPts;
 
   if (highBid && highBid.isMarks) {
     const nextMark = highBid.amount + 1;
@@ -1501,10 +1521,10 @@ function aiChooseBid(playerIdx) {
   }
 
   let bidAmount = 60;
-  if (strength >= 80) bidAmount = 81;
-  else if (strength >= 63) bidAmount = 76;
-  else if (strength >= 48) bidAmount = 71;
-  else if (strength >= 35) bidAmount = 67;
+  if (strength >= 70) bidAmount = 81;
+  else if (strength >= 55) bidAmount = 76;
+  else if (strength >= 40) bidAmount = 71;
+  else if (strength >= 28) bidAmount = 67;
 
   // Without at least one double of the trump suit, cap at 67 unless supporting a teammate's suit
   const hasDouble = hand.some(d => d.h === chosenSuit && d.l === chosenSuit);
