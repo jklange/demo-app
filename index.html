@@ -4364,6 +4364,7 @@ document.getElementById('result-continue').addEventListener('click', () => {
   hideResultPanel();
   if (G.teamScores[0] < 7 && G.teamScores[1] < 7) {
     startRound();
+    broadcastState();
   }
 });
 
