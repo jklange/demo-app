@@ -1214,7 +1214,7 @@ const SEAT_POSITIONS_IPAD = [
 
 // Domino positions on #table for played trick, indexed by display position
 const TRICK_SLOT_POSITIONS = [
-  { top:'78%', left:'50%', rotate:   0 },   // 0: 6 o'clock (me)
+  { top:'65%', left:'50%', rotate:   0 },   // 0: 6 o'clock (me) — raised from 78% to clear hand area
   { top:'68%', left:'30%', rotate: -30 },   // 1: 8 o'clock
   { top:'40%', left:'18%', rotate: -90 },   // 2: 10 o'clock
   { top:'18%', left:'50%', rotate: 180 },   // 3: 12 o'clock (center)
@@ -1224,7 +1224,7 @@ const TRICK_SLOT_POSITIONS = [
 // iPad variant: shift side dominoes toward center so they clear video tiles;
 // positions 2 and 4 also raised to match the elevated player areas
 const TRICK_SLOT_POSITIONS_IPAD = [
-  { top:'76%', left:'50%', rotate:   0 },   // 0: 6 o'clock (me)
+  { top:'65%', left:'50%', rotate:   0 },   // 0: 6 o'clock (me) — raised from 76% to clear hand area
   { top:'66%', left:'35%', rotate: -30 },   // 1: 8 o'clock
   { top:'26%', left:'30%', rotate: -90 },   // 2: 10 o'clock (raised from 40%, shifted right)
   { top:'20%', left:'50%', rotate: 180 },   // 3: 12 o'clock
@@ -2362,12 +2362,15 @@ function renderTrickArea() {
               : window.innerWidth <= 1400 ? TRICK_SLOT_POSITIONS_IPAD
               : TRICK_SLOT_POSITIONS;
   G.currentTrick.forEach(({ player, domino }) => {
-    const pos = slots[dispIdx(player)];
+    const dIdx = dispIdx(player);
+    const pos = slots[dIdx];
     const wrap = document.createElement('div');
     wrap.className = 'trick-domino-play';
+    // Human's own played tile (dIdx 0) gets z-index above the hand area (z-index 20)
+    // so it remains visible regardless of screen size.
     wrap.style.cssText = `position:absolute; top:${pos.top}; left:${pos.left};
       transform: translate(-50%,-50%) rotate(${pos.rotate}deg);
-      z-index:10; pointer-events:none;`;
+      z-index:${dIdx === 0 ? 25 : 10}; pointer-events:none;`;
     wrap.appendChild(buildDomino(domino, false, false, G.trump !== null && isTrump(domino, G.trump)));
     table.appendChild(wrap);
   });
