@@ -670,6 +670,7 @@
     }
     /* show-hands rows inside result panel */
     #result-hands { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 75vh; }
+    .result-hand-sep { width: 1px; height: 68px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
     #result-hands.hidden { display: none; }
     .result-hand-row {
       display: flex;
@@ -2979,10 +2980,30 @@ function showHandsInResult() {
 
     const tiles = document.createElement('div');
     tiles.className = 'result-hand-tiles';
-    (hands[i] || []).forEach(d => {
-      const domEl = buildDomino(d, false, false, G.trump !== null && isTrump(d, G.trump));
-      domEl.classList.add('kitty-size');
-      tiles.appendChild(domEl);
+    const trump = G.trump;
+    const hand = hands[i] || [];
+    // Group by the winning bid's trump when a trump suit exists.
+    // Groups: trumps (highest rank first) | non-trump doubles | count tiles | other
+    const canGroup = trump !== null && trump !== FOLLOW_ME;
+    const groups = canGroup ? [
+      hand.filter(d =>  isTrump(d, trump)).sort((a, b) => trumpRank(b, trump) - trumpRank(a, trump)),
+      hand.filter(d => !isTrump(d, trump) && d.h === d.l).sort((a, b) => b.h - a.h),
+      hand.filter(d => !isTrump(d, trump) && d.h !== d.l && dominoPoints(d) > 0)
+          .sort((a, b) => dominoPoints(b) - dominoPoints(a) || (b.h + b.l) - (a.h + a.l)),
+      hand.filter(d => !isTrump(d, trump) && d.h !== d.l && dominoPoints(d) === 0)
+          .sort((a, b) => (b.h + b.l) - (a.h + a.l)),
+    ].filter(g => g.length > 0) : [hand];
+    groups.forEach((group, gIdx) => {
+      if (gIdx > 0) {
+        const sep = document.createElement('div');
+        sep.className = 'result-hand-sep';
+        tiles.appendChild(sep);
+      }
+      group.forEach(d => {
+        const domEl = buildDomino(d, false, false, canGroup && isTrump(d, trump));
+        domEl.classList.add('kitty-size');
+        tiles.appendChild(domEl);
+      });
     });
 
     row.appendChild(header);
