@@ -1539,6 +1539,30 @@ function aiLeadDomino(playerIdx) {
   const trumps = legal.filter(d => isTrump(d, trump)).sort((a, b) => trumpRank(b, trump) - trumpRank(a, trump));
   const nonTrumps = legal.filter(d => !isTrump(d, trump));
 
+  // Opposing team holds the bid — don't lead non-double trump into their strength.
+  // Prefer a tile in a suit a teammate indicated, or a non-trump double.
+  const opponentsBid = G.highBid && TEAM[G.bidWinner] !== myTeam;
+  const haveDoubleTrump = trumps.length > 0 && trumpRank(trumps[0], trump) === 20;
+  if (opponentsBid && !haveDoubleTrump && nonTrumps.length > 0) {
+    // Lead in a suit where a teammate showed strength during bidding
+    const teammates = [0, 1, 2, 3, 4, 5].filter(i => i !== playerIdx && TEAM[i] === myTeam);
+    const teammateSuit = teammates
+      .map(i => G.playerBids?.[i])
+      .filter(b => b && b !== 'pass' && typeof b.trump === 'number' && b.trump !== trump)
+      .map(b => b.trump)[0];
+    if (teammateSuit !== undefined) {
+      const suitTiles = nonTrumps
+        .filter(d => d.h === teammateSuit || d.l === teammateSuit)
+        .sort((a, b) => suitRank(b, teammateSuit) - suitRank(a, teammateSuit));
+      if (suitTiles.length > 0) return suitTiles[0];
+    }
+    // Non-trump doubles are safe: they win their suit and don't gift trump tricks
+    const nonTrumpDoubles = nonTrumps.filter(d => d.h === d.l).sort((a, b) => b.h - a.h);
+    if (nonTrumpDoubles.length > 0) return nonTrumpDoubles[0];
+    // Fallback: lead the best non-trump tile
+    return nonTrumps.sort((a, b) => (b.h + b.l) - (a.h + a.l))[0];
+  }
+
   if (trumps.length > 0 && !avoidTrump) {
     const opponentHasTrump = G.hands.some((h, i) => TEAM[i] !== myTeam && h.some(d => isTrump(d, trump)));
 
