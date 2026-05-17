@@ -1576,6 +1576,17 @@ function aiFollowDomino(playerIdx) {
   const nonTrumpLegal = legal.filter(d => !isTrump(d, trump));
   const pool = avoidTrump && nonTrumpLegal.length > 0 ? nonTrumpLegal : legal;
 
+  // Rank of a tile within its suit — used to prefer weaker tiles when dumping.
+  // Trump tiles use trumpRank; suit tiles use suitRank; off-suit use pip sum.
+  const led = trick[0]?.domino;
+  const ledIsTrump = led ? isTrump(led, trump) : false;
+  const ledSuit = (led && !ledIsTrump) ? led.h : null;
+  const tileRank = d => {
+    if (isTrump(d, trump)) return trumpRank(d, trump);
+    if (ledSuit !== null && (d.h === ledSuit || d.l === ledSuit)) return suitRank(d, ledSuit);
+    return d.h + d.l;
+  };
+
   let partnerWinning = false;
   if (trick.length > 0) {
     const winnerIdx = trickWinner(trick, trump);
@@ -1587,7 +1598,7 @@ function aiFollowDomino(playerIdx) {
     // Dump the highest count onto our winning trick; otherwise play lowest card
     const counts = [...pool].filter(d => dominoPoints(d) > 0).sort((a, b) => dominoPoints(b) - dominoPoints(a));
     if (counts.length > 0) return counts[0];
-    return [...pool].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h))[0];
+    return [...pool].sort((a, b) => dominoPoints(a) - dominoPoints(b) || tileRank(a) - tileRank(b))[0];
   }
 
   const winning = pool.filter(d => {
@@ -1601,7 +1612,9 @@ function aiFollowDomino(playerIdx) {
     if (winCounts.length > 0) return winCounts[0];
     return winning.sort((a, b) => dominoPoints(a) - dominoPoints(b))[0];
   }
-  return [...pool].sort((a, b) => dominoPoints(a) - dominoPoints(b) || (a.h - b.h))[0];
+  // Can't win — dump the weakest tile: lowest count first, then lowest suit/trump rank.
+  // This prevents wasting doubles (rank 20) when a lower tile of the same suit is available.
+  return [...pool].sort((a, b) => dominoPoints(a) - dominoPoints(b) || tileRank(a) - tileRank(b))[0];
 }
 
 function aiKittyChoice(playerIdx) {
