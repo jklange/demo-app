@@ -660,6 +660,33 @@
     }
     #result-panel .result-table td:first-child { color: var(--muted); }
 
+    /* show-hands rows inside result panel */
+    #result-hands { display: flex; flex-direction: column; gap: 10px; }
+    #result-hands.hidden { display: none; }
+    .result-hand-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .result-hand-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .result-hand-bid { font-size: 12px; color: var(--muted); font-weight: 400; }
+    .result-hand-tiles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+    }
+
     /* game over */
     #gameover-panel { text-align: center; }
     #gameover-panel h2 { font-size: 32px; }
@@ -1090,6 +1117,8 @@
     <h2 id="result-title">Round Over</h2>
     <p id="result-summary"></p>
     <table class="result-table" id="result-table"></table>
+    <button class="btn btn-muted" id="result-show-hands" style="display:none">Show Hands</button>
+    <div id="result-hands" class="hidden"></div>
     <button class="btn btn-primary" id="result-continue">Next Round</button>
   </div>
 </div>
@@ -1822,6 +1851,7 @@ function startPlay() {
   showBidSummary();
   G.trickLeader = G.bidWinner;
   G.currentTrick = [];
+  G.lastRoundHands = G.hands.map(h => [...h]);
   for (let i = 0; i < 6; i++) sortHand(G.hands[i], G.trump);
   handSortPip = null;
   renderAll();
@@ -2839,6 +2869,60 @@ function showResultPanel(marksWon) {
     <tr><td>Team A total marks</td><td>${G.teamScores[0]}</td></tr>
     <tr><td>Team B total marks</td><td>${G.teamScores[1]}</td></tr>
   `;
+
+  const showHandsBtn = document.getElementById('result-show-hands');
+  const handsDiv = document.getElementById('result-hands');
+  handsDiv.innerHTML = '';
+  handsDiv.classList.add('hidden');
+  showHandsBtn.textContent = 'Show Hands';
+  showHandsBtn.style.display = (NET.mode === 'host' || NET.mode === 'local') ? '' : 'none';
+}
+
+function showHandsInResult() {
+  const handsDiv = document.getElementById('result-hands');
+  handsDiv.innerHTML = '';
+  handsDiv.classList.remove('hidden');
+  document.getElementById('result-show-hands').textContent = 'Hide Hands';
+
+  const hands = G.lastRoundHands;
+  if (!hands) return;
+
+  for (let i = 0; i < 6; i++) {
+    const teamLabel = TEAM[i] === 0 ? 'A' : 'B';
+    const teamColor = TEAM[i] === 0 ? 'var(--teamA)' : 'var(--teamB)';
+    const bid = G.playerBids ? G.playerBids[i] : null;
+    const bidText = bid && bid !== 'pass' ? formatBidLabel(bid) : (bid === 'pass' ? 'Pass' : '—');
+    const isBidWinner = G.highBid && G.highBid.player === i;
+
+    const row = document.createElement('div');
+    row.className = 'result-hand-row';
+
+    const header = document.createElement('div');
+    header.className = 'result-hand-header';
+    header.innerHTML = `
+      <span style="color:${teamColor}">Team ${teamLabel}</span>
+      <span>${pName(i)}${i === NET.myIdx ? ' (you)' : ''}</span>
+      <span class="result-hand-bid">${isBidWinner ? '★ ' : ''}${bidText}</span>
+    `;
+
+    const tiles = document.createElement('div');
+    tiles.className = 'result-hand-tiles';
+    (hands[i] || []).forEach(d => {
+      const domEl = buildDomino(d, false, false, G.trump !== null && isTrump(d, G.trump));
+      domEl.classList.add('mini');
+      tiles.appendChild(domEl);
+    });
+
+    row.appendChild(header);
+    row.appendChild(tiles);
+    handsDiv.appendChild(row);
+  }
+
+  if (NET.mode === 'host') {
+    Object.values(NET.connections).forEach(conn => {
+      if (conn.open) conn.send({ type: 'showHands' });
+    });
+  }
 }
 
 function hideResultPanel() {
@@ -3255,6 +3339,12 @@ function handleHostMessage(data) {
       break;
     case 'playerJoined':
       renderLobby(); // refresh lobby UI with updated seat list
+      break;
+    case 'showHands':
+      showHandsInResult();
+      break;
+    case 'hideHands':
+      document.getElementById('result-hands').classList.add('hidden');
       break;
   }
 }
@@ -4360,6 +4450,21 @@ document.getElementById('kitty-bar-confirm').addEventListener('click', () => {
   hideKittyPanel();
   broadcastState();
   startPlay();
+});
+
+document.getElementById('result-show-hands').addEventListener('click', () => {
+  const handsDiv = document.getElementById('result-hands');
+  if (handsDiv.classList.contains('hidden')) {
+    showHandsInResult();
+  } else {
+    handsDiv.classList.add('hidden');
+    document.getElementById('result-show-hands').textContent = 'Show Hands';
+    if (NET.mode === 'host') {
+      Object.values(NET.connections).forEach(conn => {
+        if (conn.open) conn.send({ type: 'hideHands' });
+      });
+    }
+  }
 });
 
 document.getElementById('result-continue').addEventListener('click', () => {
