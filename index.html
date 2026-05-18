@@ -1499,8 +1499,8 @@ function aiChooseBid(playerIdx) {
   const doubleCount = hand.filter(d => d.h === d.l).length;
   const doubleCountNorm = doubleCount / 7; // max 7 unique doubles in a hand
 
-  // Trump quality weighted 2×, trump count and double count each 1× (total 4 parts)
-  const baseStrength = ((2 * trumpWeightNorm + trumpCountNorm + doubleCountNorm) / 4) * 100;
+  // Trump quality 5×, trump count 3×, double count 2× (total 10 parts)
+  const baseStrength = ((5 * trumpWeightNorm + 3 * trumpCountNorm + 2 * doubleCountNorm) / 10) * 100;
 
   // Penalty: non-double-5 count tiles are liabilities opponents can capture.
   // 5-5 is exempt — it's a double and fully controlled.
