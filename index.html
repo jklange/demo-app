@@ -1654,16 +1654,32 @@ function aiFollowDomino(playerIdx) {
     partnerWinning = TEAM[winnerPlayer] === myTeam;
   }
 
-  // A partner is "securely" winning only if no opponent who hasn't played yet can beat them.
+  // A partner is "securely" winning only if no floating tile (unknown location)
+  // could beat them when played by an opponent still to act.
+  // Uses only own hand + already-played tiles — no peeking at other hands.
   const partnerSecure = partnerWinning && (() => {
-    const playedInTrick = new Set(trick.map(t => t.player));
-    for (let p = 0; p < 6; p++) {
-      if (playedInTrick.has(p)) continue;
-      if (p === playerIdx) continue;        // that's us — we're about to play
-      if (TEAM[p] === myTeam) continue;     // teammate, not a threat
-      for (const d of legalPlays(p)) {
-        const hypo = [...trick, { player: p, domino: d }];
-        if (hypo[trickWinner(hypo, trump)].player === p) return false;
+    const playedPlayers = new Set(trick.map(t => t.player));
+    const hasUnplayedOpponent = [0,1,2,3,4,5].some(p =>
+      !playedPlayers.has(p) && p !== playerIdx && TEAM[p] !== myTeam
+    );
+    if (!hasUnplayedOpponent) return true;
+
+    // Tiles whose location is known: own hand + every tile played so far
+    const seen = new Set();
+    G.hands[playerIdx].forEach(d => seen.add(`${d.h},${d.l},${d.s}`));
+    G.completedTricks.forEach(({ plays }) =>
+      plays.forEach(({ domino: d }) => seen.add(`${d.h},${d.l},${d.s}`))
+    );
+    trick.forEach(({ domino: d }) => seen.add(`${d.h},${d.l},${d.s}`));
+
+    // If any floating tile would win the trick, an opponent might hold it
+    for (let h = 0; h <= 6; h++) {
+      for (let l = 0; l <= h; l++) {
+        for (let s = 1; s <= 2; s++) {
+          if (seen.has(`${h},${l},${s}`)) continue;
+          const hypo = [...trick, { player: -1, domino: { h, l, s } }];
+          if (trickWinner(hypo, trump) === hypo.length - 1) return false;
+        }
       }
     }
     return true;
