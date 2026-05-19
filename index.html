@@ -1654,10 +1654,28 @@ function aiFollowDomino(playerIdx) {
     partnerWinning = TEAM[winnerPlayer] === myTeam;
   }
 
+  // A partner is "securely" winning only if no opponent who hasn't played yet can beat them.
+  const partnerSecure = partnerWinning && (() => {
+    const playedInTrick = new Set(trick.map(t => t.player));
+    for (let p = 0; p < 6; p++) {
+      if (playedInTrick.has(p)) continue;
+      if (p === playerIdx) continue;        // that's us — we're about to play
+      if (TEAM[p] === myTeam) continue;     // teammate, not a threat
+      for (const d of legalPlays(p)) {
+        const hypo = [...trick, { player: p, domino: d }];
+        if (hypo[trickWinner(hypo, trump)].player === p) return false;
+      }
+    }
+    return true;
+  })();
+
   if (partnerWinning) {
-    // Dump the highest count onto our winning trick; otherwise play lowest card
-    const counts = [...pool].filter(d => dominoPoints(d) > 0).sort((a, b) => dominoPoints(b) - dominoPoints(a));
-    if (counts.length > 0) return counts[0];
+    if (partnerSecure) {
+      // Trick is locked — dump the highest count tile
+      const counts = [...pool].filter(d => dominoPoints(d) > 0).sort((a, b) => dominoPoints(b) - dominoPoints(a));
+      if (counts.length > 0) return counts[0];
+    }
+    // Partner is winning but an opponent could still steal the trick — play safe (lowest non-count)
     return [...pool].sort((a, b) => dominoPoints(a) - dominoPoints(b) || tileRank(a) - tileRank(b))[0];
   }
 
