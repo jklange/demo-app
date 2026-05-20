@@ -1495,12 +1495,12 @@ function aiChooseBid(playerIdx) {
   // Component 2: trump count
   const trumpCountNorm = trumpTiles.length / 9;
 
-  // Component 3: all doubles (each guarantees its suit, trump or not)
-  const doubleCount = hand.filter(d => d.h === d.l).length;
-  const doubleCountNorm = doubleCount / 7; // max 7 unique doubles in a hand
+  // Component 3: off tiles (non-trump, non-double) — fewer is better
+  const offCount = hand.filter(d => !isTrump(d, chosenSuit) && d.h !== d.l).length;
+  const offCountNorm = (9 - offCount) / 9;
 
-  // Trump quality 5×, trump count 3×, double count 2× (total 10 parts)
-  const baseStrength = ((5 * trumpWeightNorm + 3 * trumpCountNorm + 2 * doubleCountNorm) / 10) * 100;
+  // Trump quality 5×, trump count 3×, off-tile absence 2× (total 10 parts)
+  const baseStrength = ((5 * trumpWeightNorm + 3 * trumpCountNorm + 2 * offCountNorm) / 10) * 100;
 
   // Penalty: non-double-5 count tiles are liabilities opponents can capture.
   // 5-5 is exempt — it's a double and fully controlled.
@@ -1513,10 +1513,9 @@ function aiChooseBid(playerIdx) {
   // Marks qualification — strict unless supporting a partner's suit
   const hasBothDoubles = hand.filter(d => d.h === chosenSuit && d.l === chosenSuit).length === 2;
   const hasTrump6     = hand.some(d => isTrump(d, chosenSuit) && (d.h === 6 || d.l === 6));
-  const offHandTiles  = hand.filter(d => !isTrump(d, chosenSuit) && d.h !== d.l).length;
   const marksQualified = useSupport
     ? chosenCount >= 7 && countPts >= 20
-    : hasBothDoubles && hasTrump6 && offHandTiles <= 1;
+    : hasBothDoubles && hasTrump6 && offCount <= 1;
 
   if (highBid && highBid.isMarks) {
     const nextMark = highBid.amount + 1;
