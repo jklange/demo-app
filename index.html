@@ -1547,7 +1547,26 @@ function aiChooseBid(playerIdx) {
   const isLastBidder = G.bidActed.every((acted, i) => i === playerIdx || acted);
   if (isLastBidder && bidAmount > minBid) bidAmount = minBid;
 
-  if (bidAmount < minBid) return null;
+  if (bidAmount < minBid) {
+    // Weak probe: bid +1 into a 61-67 auction to invite a partner who hasn't acted yet.
+    // Requires: opponents hold the bid, a teammate still bids after us, and a hand with
+    // ≥3 trumps including ≥2 top trumps (double or trump-6) with at least one double.
+    const topTrumps = trumpTiles.filter(d => {
+      const r = trumpRank(d, chosenSuit);
+      return r === 20 || r === 6;
+    });
+    const probeHand = chosenCount >= 3
+      && topTrumps.length >= 2
+      && topTrumps.some(d => d.h === d.l);
+    const opponentHoldsBid  = G.highBid && TEAM[G.highBid.player] !== myTeam;
+    const teammateBidsAfter = [0,1,2,3,4,5].some(
+      i => i !== playerIdx && TEAM[i] === myTeam && !G.bidActed[i]
+    );
+    if (probeHand && opponentHoldsBid && teammateBidsAfter && minBid >= 61 && minBid <= 67) {
+      return { isMarks: false, amount: minBid, trump: chosenSuit };
+    }
+    return null;
+  }
   return { isMarks: false, amount: bidAmount, trump: chosenSuit };
 }
 
