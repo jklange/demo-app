@@ -1600,10 +1600,30 @@ function aiLeadDomino(playerIdx) {
     const opponentHasTrump = G.hands.some((h, i) => TEAM[i] !== myTeam && h.some(d => isTrump(d, trump)));
 
     if (opponentHasTrump) {
-      // Opponents still have trump — lead highest trump when trump-heavy
-      if (trumps.length >= hand.filter(d => isTrump(d, trump)).length * 0.5) {
-        return trumps[0];
+      // Lead trump to pull opponents off it, but don't risk a count tile
+      // when a higher trump is still unaccounted for.
+      const myTopRank = trumpRank(trumps[0], trump);
+      const seen = new Set();
+      G.hands[playerIdx].forEach(d => seen.add(`${d.h},${d.l},${d.s}`));
+      G.completedTricks.forEach(({ plays }) =>
+        plays.forEach(({ domino: d }) => seen.add(`${d.h},${d.l},${d.s}`))
+      );
+      const floatingHigherTrump = (() => {
+        for (let h = 0; h <= 6; h++)
+          for (let l = 0; l <= h; l++)
+            for (let s = 1; s <= 2; s++)
+              if (!seen.has(`${h},${l},${s}`) && isTrump({ h, l, s }, trump) && trumpRank({ h, l, s }, trump) > myTopRank)
+                return true;
+        return false;
+      })();
+
+      if (!floatingHigherTrump || dominoPoints(trumps[0]) === 0) {
+        return trumps[0]; // top trump is safe or non-count — lead it
       }
+      // Top trump is count and could be stolen — prefer highest non-count trump
+      const nonCountTrumps = trumps.filter(d => dominoPoints(d) === 0);
+      if (nonCountTrumps.length > 0) return nonCountTrumps[0];
+      return trumps[trumps.length - 1]; // all trumps are count — lead the lowest
     } else {
       // Only our team has trump; leading trump just drains our own reserve.
       // Must still play trump if no non-trump exists in hand.
