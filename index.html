@@ -1747,6 +1747,27 @@ function aiFollowDomino(playerIdx) {
     return hypo[w].player === playerIdx;
   });
   if (winning.length > 0) {
+    // First to trump a non-trump trick: choose trump carefully
+    const firstToTrump = !ledIsTrump
+      && trick.every(t => !isTrump(t.domino, trump))
+      && winning.some(d => isTrump(d, trump));
+
+    if (firstToTrump) {
+      const winningTrumps = winning
+        .filter(d => isTrump(d, trump))
+        .sort((a, b) => trumpRank(a, trump) - trumpRank(b, trump)); // lowest first
+      const bidTeam = TEAM[G.bidWinner] !== myTeam;
+      if (bidTeam) {
+        // Non-bid team: capture count by trumping with a count trump if possible
+        const countTrumps = winningTrumps
+          .filter(d => dominoPoints(d) > 0)
+          .sort((a, b) => dominoPoints(b) - dominoPoints(a));
+        if (countTrumps.length > 0) return countTrumps[0];
+      }
+      // Bid team (or no count trump available): use the lowest trump to preserve strength
+      return winningTrumps[0];
+    }
+
     // Win with the highest count we can; if no count wins, use weakest winning card
     const winCounts = winning.filter(d => dominoPoints(d) > 0).sort((a, b) => dominoPoints(b) - dominoPoints(a));
     if (winCounts.length > 0) return winCounts[0];
