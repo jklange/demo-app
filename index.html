@@ -1547,7 +1547,16 @@ function aiChooseBid(playerIdx) {
   const isLastBidder = G.bidActed.every((acted, i) => i === playerIdx || acted);
   if (isLastBidder && bidAmount > minBid) bidAmount = minBid;
 
-  if (bidAmount < minBid) return null;
+  if (bidAmount < minBid) {
+    // Weak-hand probe: bid the minimum to invite a teammate rather than passing,
+    // but only when a teammate hasn't acted yet and the level isn't too high.
+    const teammates = [0,1,2,3,4,5].filter(i => i !== playerIdx && TEAM[i] === myTeam);
+    const isLastTeamBidder = teammates.every(i => G.bidActed[i]);
+    if (!isLastTeamBidder && chosenCount >= 4 && minBid <= 84) {
+      return { isMarks: false, amount: minBid, trump: chosenSuit };
+    }
+    return null;
+  }
   return { isMarks: false, amount: bidAmount, trump: chosenSuit };
 }
 
