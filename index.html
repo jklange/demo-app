@@ -1510,9 +1510,17 @@ function aiChooseBid(playerIdx) {
   // countPts still needed for Marks bid threshold below
   const countPts = hand.reduce((s, d) => s + dominoPoints(d), 0);
 
+  // Marks qualification — strict unless supporting a partner's suit
+  const hasBothDoubles = hand.filter(d => d.h === chosenSuit && d.l === chosenSuit).length === 2;
+  const hasTrump6     = hand.some(d => isTrump(d, chosenSuit) && (d.h === 6 || d.l === 6));
+  const offHandTiles  = hand.filter(d => !isTrump(d, chosenSuit) && d.h !== d.l).length;
+  const marksQualified = useSupport
+    ? chosenCount >= 7 && countPts >= 20
+    : hasBothDoubles && hasTrump6 && offHandTiles <= 1;
+
   if (highBid && highBid.isMarks) {
     const nextMark = highBid.amount + 1;
-    if (nextMark <= 7 && chosenCount >= 7 && countPts >= 20) {
+    if (nextMark <= 7 && marksQualified) {
       return { isMarks: true, amount: nextMark, trump: chosenSuit };
     }
     return null;
@@ -1520,7 +1528,7 @@ function aiChooseBid(playerIdx) {
 
   const minBid = highBid ? highBid.amount + 1 : 60;
   if (minBid > 87) {
-    if (chosenCount >= 7) {
+    if (marksQualified) {
       return { isMarks: true, amount: 1, trump: chosenSuit };
     }
     return null;
