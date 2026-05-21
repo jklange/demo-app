@@ -303,6 +303,11 @@
     }
     .domino.dimmed { opacity: 0.45; }
     .domino.trump-marker { border-color: #ff9800; }
+    @keyframes trick-win-pulse {
+      0%, 100% { box-shadow: 0 0 4px 1px var(--tw-color, #c8bfa0); }
+      50%       { box-shadow: 0 0 12px 5px var(--tw-color, #c8bfa0); }
+    }
+    .domino.trick-winning { animation: trick-win-pulse 1s ease-in-out infinite; }
     .domino.kitty-size { width: 36px; height: 68px; border-radius: 5px; border-width: 2px; }
     .domino.kitty-size .pip-grid { width: 24px; height: 24px; }
     .domino.kitty-size .pip { width: 5px; height: 5px; }
@@ -1447,23 +1452,30 @@ function aiChooseBid(playerIdx) {
       .filter(t => t !== null)
   );
 
-  // Find AI's own best available suit
-  let bestSuit = -1, bestCount = 0;
+  // Compute trump quality weight for a given suit
+  const trumpQuality = t => hand.filter(d => isTrump(d, t)).reduce((s, d) => {
+    if (d.h === t && d.l === t) return s + 64;
+    const rank = trumpRank(d, t);
+    return s + (rank > 0 ? Math.pow(2, rank - 1) : 0);
+  }, 0);
+
+  // Find AI's own best available suit (by trump quality weight)
+  let bestSuit = -1, bestSuitWeight = -1;
   for (let t = 0; t <= 6; t++) {
     if (opponentSuits.has(t)) continue;
-    const cnt = hand.filter(d => isTrump(d, t)).length;
-    if (cnt > bestCount) { bestCount = cnt; bestSuit = t; }
+    const w = trumpQuality(t);
+    if (w > bestSuitWeight) { bestSuitWeight = w; bestSuit = t; }
   }
   // Fallback: all suits claimed by opponents (won't happen with ≤3 opponents and 7 suits)
   if (bestSuit === -1) {
     for (let t = 0; t <= 6; t++) {
-      const cnt = hand.filter(d => isTrump(d, t)).length;
-      if (cnt > bestCount) { bestCount = cnt; bestSuit = t; }
+      const w = trumpQuality(t);
+      if (w > bestSuitWeight) { bestSuitWeight = w; bestSuit = t; }
     }
   }
 
   // Consider supporting a partner's suit if we hold 2+ trumps including a high one
-  let supportSuit = -1, supportCount = 0;
+  let supportSuit = -1, supportSuitWeight = -1;
   for (let i = 0; i < 6; i++) {
     const b = G.playerBids[i];
     if (!b || b === 'pass' || b.isMarks || TEAM[i] !== myTeam) continue;
@@ -1471,16 +1483,16 @@ function aiChooseBid(playerIdx) {
     if (opponentSuits.has(t)) continue;
     const cnt = hand.filter(d => isTrump(d, t)).length;
     const highTrumps = hand.filter(d => isTrump(d, t) && (d.h === d.l || trumpRank(d, t) >= 5)).length;
-    if (cnt >= 2 && highTrumps >= 1 && cnt > supportCount) {
-      supportSuit = t;
-      supportCount = cnt;
+    if (cnt >= 2 && highTrumps >= 1) {
+      const w = trumpQuality(t);
+      if (w > supportSuitWeight) { supportSuit = t; supportSuitWeight = w; }
     }
   }
 
-  // Use partner's suit when it's within 1 trump of our own best suit
-  const useSupport = supportSuit !== -1 && supportCount >= bestCount - 1;
+  // Use partner's suit when its quality is within one trump-6 (32pts) of our own best suit
+  const useSupport = supportSuit !== -1 && supportSuitWeight >= bestSuitWeight - 32;
   const chosenSuit = useSupport ? supportSuit : bestSuit;
-  const chosenCount = useSupport ? supportCount : bestCount;
+  const chosenCount = hand.filter(d => isTrump(d, chosenSuit)).length;
 
   // Component 1: exponential trump quality
   // double=2^6(64), trump-6=2^5(32), trump-5=2^4(16), ..., trump-1=2^0(1), trump-blank=0
@@ -1499,8 +1511,8 @@ function aiChooseBid(playerIdx) {
   const offCount = hand.filter(d => !isTrump(d, chosenSuit) && d.h !== d.l).length;
   const offCountNorm = (9 - offCount) / 9;
 
-  // Trump quality 5×, trump count 3×, off-tile absence 2× (total 10 parts)
-  const baseStrength = ((5 * trumpWeightNorm + 3 * trumpCountNorm + 2 * offCountNorm) / 10) * 100;
+  // Trump quality, trump count, and off-tile absence weighted equally (1/3 each)
+  const baseStrength = ((trumpWeightNorm + trumpCountNorm + offCountNorm) / 3) * 100;
 
   // Penalty: non-double-5 count tiles are liabilities opponents can capture.
   // 5-5 is exempt — it's a double and fully controlled.
@@ -1534,39 +1546,47 @@ function aiChooseBid(playerIdx) {
   }
 
   let bidAmount = 60;
-  if (strength >= 70) bidAmount = 81;
-  else if (strength >= 55) bidAmount = 76;
-  else if (strength >= 40) bidAmount = 71;
-  else if (strength >= 28) bidAmount = 67;
+  if (strength >= 80) bidAmount = 81;
+  else if (strength >= 70) bidAmount = 76;
+  else if (strength >= 55) bidAmount = 71;
+  else if (strength >= 40) bidAmount = 67;
 
-  // Without at least one double of the trump suit, cap at 67 unless supporting a teammate's suit
+  // Double requirements: need one double to bid 67+, both doubles to bid above 71
   const hasDouble = hand.some(d => d.h === chosenSuit && d.l === chosenSuit);
-  if (!hasDouble && !useSupport && bidAmount > 67) bidAmount = 67;
+  if (!useSupport) {
+    if (!hasDouble && bidAmount >= 67) bidAmount = 60;
+    else if (!hasBothDoubles && bidAmount > 71) bidAmount = 71;
+  }
+
+  // Off-tile limits: need offs ≤ 2 to bid 71, offs ≤ 1 to bid 76+
+  if (!useSupport) {
+    if (offCount > 2 && bidAmount >= 71) bidAmount = 67;
+    else if (offCount > 1 && bidAmount >= 76) bidAmount = 71;
+  }
 
   // Bidding last — no one can raise after us, so the minimum winning bid is enough
   const isLastBidder = G.bidActed.every((acted, i) => i === playerIdx || acted);
   if (isLastBidder && bidAmount > minBid) bidAmount = minBid;
 
-  if (bidAmount < minBid) {
-    // Weak probe: bid +1 into a 61-67 auction to invite a partner who hasn't acted yet.
-    // Requires: opponents hold the bid, a teammate still bids after us, and a hand with
-    // ≥3 trumps including ≥2 top trumps (double or trump-6) with at least one double.
+  // Weak probe: when natural bid is 60 and auction is in 61-67 range, bid +1 to
+  // invite a partner who hasn't acted yet. Requires ≥3 trumps with at least one
+  // top trump (double or trump-6).
+  if (bidAmount === 60 && minBid >= 61 && minBid <= 67) {
     const topTrumps = trumpTiles.filter(d => {
       const r = trumpRank(d, chosenSuit);
       return r === 20 || r === 6;
     });
-    const probeHand = chosenCount >= 3
-      && topTrumps.length >= 2
-      && topTrumps.some(d => d.h === d.l);
+    const probeHand = chosenCount >= 3 && topTrumps.length >= 1;
     const opponentHoldsBid  = G.highBid && TEAM[G.highBid.player] !== myTeam;
     const teammateBidsAfter = [0,1,2,3,4,5].some(
       i => i !== playerIdx && TEAM[i] === myTeam && !G.bidActed[i]
     );
-    if (probeHand && opponentHoldsBid && teammateBidsAfter && minBid >= 61 && minBid <= 67) {
+    if (probeHand && opponentHoldsBid && teammateBidsAfter) {
       return { isMarks: false, amount: minBid, trump: chosenSuit };
     }
     return null;
   }
+  if (bidAmount < minBid) return null;
   return { isMarks: false, amount: bidAmount, trump: chosenSuit };
 }
 
@@ -2488,7 +2508,8 @@ function renderTrickArea() {
   const slots = window.innerWidth <= 900  ? TRICK_SLOT_POSITIONS_PHONE
               : window.innerWidth <= 1400 ? TRICK_SLOT_POSITIONS_IPAD
               : TRICK_SLOT_POSITIONS;
-  G.currentTrick.forEach(({ player, domino }) => {
+  const winTrickIdx = G.currentTrick.length > 0 ? trickWinner(G.currentTrick, G.trump) : -1;
+  G.currentTrick.forEach(({ player, domino }, trickIdx) => {
     const dIdx = dispIdx(player);
     const pos = slots[dIdx];
     const wrap = document.createElement('div');
@@ -2498,7 +2519,13 @@ function renderTrickArea() {
     wrap.style.cssText = `position:absolute; top:${pos.top}; left:${pos.left};
       transform: translate(-50%,-50%) rotate(${pos.rotate}deg);
       z-index:${dIdx === 0 ? 25 : 10}; pointer-events:none;`;
-    wrap.appendChild(buildDomino(domino, false, false, G.trump !== null && isTrump(domino, G.trump)));
+    const isTrumpD = G.trump !== null && isTrump(domino, G.trump);
+    const dominoEl = buildDomino(domino, false, false, isTrumpD);
+    if (trickIdx === winTrickIdx) {
+      dominoEl.classList.add('trick-winning');
+      dominoEl.style.setProperty('--tw-color', isTrumpD ? '#ff9800' : '#c8bfa0');
+    }
+    wrap.appendChild(dominoEl);
     table.appendChild(wrap);
   });
 }
