@@ -3098,7 +3098,8 @@ function showHandsInResult() {
   const hands = G.lastRoundHands;
   if (!hands) return;
 
-  for (let i = 0; i < 6; i++) {
+  const bidOrder = Array.from({length: 6}, (_, offset) => (G.bidStartIdx + offset) % 6);
+  for (const i of bidOrder) {
     const teamLabel = TEAM[i] === 0 ? 'A' : 'B';
     const teamColor = TEAM[i] === 0 ? 'var(--teamA)' : 'var(--teamB)';
     const bid = G.playerBids ? G.playerBids[i] : null;
