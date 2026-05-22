@@ -1685,6 +1685,11 @@ function aiLeadDomino(playerIdx) {
     }
   }
 
+  // Prefer non-trump doubles before falling back to point-sort — they guarantee
+  // their suit and shouldn't be skipped just because a count tile has more pips.
+  const nonTrumpDoublesFallback = nonTrumps.filter(d => d.h === d.l).sort((a, b) => b.h - a.h);
+  if (nonTrumpDoublesFallback.length > 0) return nonTrumpDoublesFallback[0];
+
   const sorted = [...legal].sort((a, b) => (dominoPoints(b) - dominoPoints(a)) || (b.h - a.h));
   return sorted[0];
 }
