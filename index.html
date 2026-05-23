@@ -1762,6 +1762,14 @@ function aiFollowDomino(playerIdx) {
       const counts = [...pool].filter(d => dominoPoints(d) > 0).sort((a, b) => dominoPoints(b) - dominoPoints(a));
       if (counts.length > 0) return counts[0];
     }
+    // Cover partner's non-trump trick with our suit double if we hold it.
+    // The double is suit-secure: trickWinner breaks ties to first-played, so the
+    // floating other copy of the double cannot beat us (score ties fail strict >).
+    // Only a trump can steal after this — the same risk that exists for any play.
+    if (!ledIsTrump && ledSuit !== null) {
+      const suitDouble = pool.find(d => !isTrump(d, trump) && d.h === d.l && d.h === ledSuit);
+      if (suitDouble) return suitDouble;
+    }
     // Partner is winning but an opponent could still steal the trick — play safe (lowest non-count)
     // Never burn trump on a trick partner is already winning
     const nonTrumpPool = pool.filter(d => !isTrump(d, trump));
