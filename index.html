@@ -1763,7 +1763,10 @@ function aiFollowDomino(playerIdx) {
       if (counts.length > 0) return counts[0];
     }
     // Partner is winning but an opponent could still steal the trick — play safe (lowest non-count)
-    return [...pool].sort((a, b) => dominoPoints(a) - dominoPoints(b) || tileRank(a) - tileRank(b))[0];
+    // Never burn trump on a trick partner is already winning
+    const nonTrumpPool = pool.filter(d => !isTrump(d, trump));
+    const safePool = nonTrumpPool.length > 0 ? nonTrumpPool : pool;
+    return [...safePool].sort((a, b) => dominoPoints(a) - dominoPoints(b) || tileRank(a) - tileRank(b))[0];
   }
 
   const winning = pool.filter(d => {
