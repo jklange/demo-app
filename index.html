@@ -3477,15 +3477,18 @@ function handleClientMessage(conn, data) {
     }
     case 'kitty': {
       if (G.bidWinner !== playerIdx) return;
-      const { ks, hs } = data;
-      if (ks.length !== hs.length && ks.length > 0) return;
-      ks.forEach((ki, i) => {
-        const hi = hs[i];
-        const tmp = G.kitty[ki];
-        G.kitty[ki] = G.hands[playerIdx][hi];
-        G.hands[playerIdx][hi] = tmp;
+      const { kittyIds, handIds } = data;
+      if (kittyIds.length !== handIds.length && kittyIds.length > 0) return;
+      kittyIds.forEach((kId, i) => {
+        const ki = G.kitty.findIndex(d => dominoId(d) === kId);
+        const hi = G.hands[playerIdx].findIndex(d => dominoId(d) === handIds[i]);
+        if (ki >= 0 && hi >= 0) {
+          const tmp = G.kitty[ki];
+          G.kitty[ki] = G.hands[playerIdx][hi];
+          G.hands[playerIdx][hi] = tmp;
+        }
       });
-      log(`${pName(playerIdx)} swaps ${ks.length} domino(es) with the kitty.`);
+      log(`${pName(playerIdx)} swaps ${kittyIds.length} domino(es) with the kitty.`);
       hideKittyPanel();
       startPlay();
       break;
@@ -3531,10 +3534,9 @@ function handleHostMessage(data) {
       const prevPhase = G.phase;
       const prevRound = G.roundNum;
       G = data.G;
-      // Reset local hand sort when a new round starts, entering kitty, or entering play.
-      // Kitty reset is critical: if the client sorted their hand during bidding, their displayed
-      // indices would differ from the host's deal-order array, causing wrong tiles to be swapped.
-      if (G.roundNum !== prevRound || G.phase === 'kitty' || (G.phase === 'play' && prevPhase !== 'play')) {
+      // Reset local hand sort on new round or entering play (trump-based sort takes over).
+      // Kitty phase preserves the player's sort since swaps now use domino IDs, not indices.
+      if (G.roundNum !== prevRound || (G.phase === 'play' && prevPhase !== 'play')) {
         handSortPip = null;
       } else if (handSortPip !== null) {
         sortHandByNumber(G.hands[NET.myIdx], handSortPip);
@@ -4699,7 +4701,9 @@ document.getElementById('kitty-bar-confirm').addEventListener('click', () => {
   }
 
   if (NET.mode === 'client') {
-    sendToHost({ type: 'kitty', ks: [...ks], hs: [...hs] });
+    const kittyIds = ks.map(ki => dominoId(G.kitty[ki]));
+    const handIds = hs.map(hi => dominoId(G.hands[NET.myIdx][hi]));
+    sendToHost({ type: 'kitty', kittyIds, handIds });
     hideKittyPanel();
     return;
   }
