@@ -3514,7 +3514,11 @@ function handleHostMessage(data) {
       NET.myIdx = data.idx;
       NET.playerNames[data.idx] = NET.myName || `P${data.idx}`;
       sendToHost({ type: 'setName', name: NET.playerNames[data.idx] });
-      if (NET.roomCode) localStorage.setItem('ee88-seat-' + NET.roomCode, data.idx);
+      if (NET.roomCode) {
+        localStorage.setItem('ee88-seat-' + NET.roomCode, data.idx);
+        localStorage.setItem('ee88-last-code', NET.roomCode);
+      }
+      if (NET.myName) localStorage.setItem('ee88-last-name', NET.myName);
       renderLobby();
       break;
     case 'nameUpdate':
@@ -4305,7 +4309,7 @@ function renderJoinForm() {
   nameInput.maxLength = 20;
   nameInput.placeholder = 'Enter your name';
   nameInput.autocomplete = 'off';
-  nameInput.value = NET.myName || '';
+  nameInput.value = NET.myName || localStorage.getItem('ee88-last-name') || '';
   nameInput.style.cssText = 'display:block;width:100%;margin-bottom:12px;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;font-family:inherit';
   content.appendChild(nameInput);
 
@@ -4323,6 +4327,7 @@ function renderJoinForm() {
   codeInput.maxLength = 6;
   codeInput.placeholder = 'XXXXXX';
   codeInput.autocomplete = 'off';
+  codeInput.value = localStorage.getItem('ee88-last-code') || '';
   codeInput.oninput = () => { codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g,''); };
 
   const connectBtn = document.createElement('button');
@@ -4337,6 +4342,7 @@ function renderJoinForm() {
     if (code.length !== 6) { statusEl.className='lobby-status err'; statusEl.textContent='Enter a 6-character code.'; return; }
     const name = nameInput.value.trim() || 'Player';
     NET.myName = name;
+    localStorage.setItem('ee88-last-name', name);
     statusEl.className='lobby-status'; statusEl.textContent='Connecting…';
     connectBtn.disabled = true;
     joinRoom(code, statusEl, () => renderJoinForm());
@@ -4447,8 +4453,9 @@ function markPlayerDisconnected(idx) {
 }
 
 function createRoom() {
-  const code = NET.savedState?.roomCode || randomCode();
+  const code = NET.savedState?.roomCode || localStorage.getItem('ee88-host-code') || randomCode();
   NET.roomCode = code;
+  localStorage.setItem('ee88-host-code', code);
   NET.mode = 'host';
   NET.myIdx = 0;
   NET.playerTypes = ['human', 'open', 'open', 'open', 'open', 'open'];
@@ -4472,6 +4479,7 @@ function createRoom() {
     if (err.type === 'unavailable-id') {
       // code collision — clear saved code so retry uses a fresh random one
       if (NET.savedState) NET.savedState.roomCode = null;
+      localStorage.removeItem('ee88-host-code');
       NET.peer.destroy();
       createRoom();
     } else {
