@@ -4072,8 +4072,20 @@ function renderLobby() {
         prompt('Share this room code:', NET.roomCode);
       });
     };
+    const newCodeBtn = document.createElement('button');
+    newCodeBtn.className = 'btn btn-muted';
+    newCodeBtn.style.fontSize = '11px';
+    newCodeBtn.textContent = 'New Code';
+    newCodeBtn.title = 'Generate a fresh room code';
+    newCodeBtn.onclick = () => {
+      localStorage.removeItem('ee88-host-code');
+      if (NET.savedState) NET.savedState.roomCode = null;
+      if (NET.peer) { NET.peer.destroy(); NET.peer = null; }
+      createRoom();
+    };
     codeBox.appendChild(codeVal);
     codeBox.appendChild(copyBtn);
+    codeBox.appendChild(newCodeBtn);
     content.appendChild(codeBox);
 
     const hint = document.createElement('div');
