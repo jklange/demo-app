@@ -987,7 +987,7 @@
 <!-- SCORE BAR -->
 <div id="scorebar">
   <div class="team">
-    <span class="team-label teamA-label">Team A</span>
+    <span class="team-label teamA-label" id="team-a-label">Team A</span>
     <span style="font-size:16px;color:var(--muted)" id="team-a-players">(You, P2, P4)</span>
     <div class="marks" id="marksA"></div>
   </div>
@@ -995,7 +995,7 @@
   <div class="team">
     <div class="marks" id="marksB"></div>
     <span style="font-size:16px;color:var(--muted)" id="team-b-players">(P1, P3, P5)</span>
-    <span class="team-label teamB-label">Team B</span>
+    <span class="team-label teamB-label" id="team-b-label">Team B</span>
   </div>
   <button class="btn btn-muted" id="video-toggle-btn" onclick="toggleVideo()" style="display:none;font-size:14px;padding:4px 9px;margin-left:8px;flex-shrink:0">&#x1F4F7; Video</button>
   <button class="btn btn-muted" id="mute-btn" onclick="toggleMuteSound()" style="font-size:16px;padding:4px 10px;margin-left:8px;flex-shrink:0">&#x1F50A;</button>
@@ -1017,13 +1017,13 @@
 <div id="main">
   <!-- TEAM A TRICKS -->
   <div class="tricks-col" id="tricks-col-a">
-    <div class="tricks-col-header teamA">Team A<span class="trick-lead-dot" id="trick-lead-dot-a"></span><span class="trick-count" id="tricks-a-count"></span></div>
+    <div class="tricks-col-header teamA"><span id="tricks-header-a">Team A</span><span class="trick-lead-dot" id="trick-lead-dot-a"></span><span class="trick-count" id="tricks-a-count"></span></div>
     <div class="tricks-rows" id="trick-rows-a"></div>
   </div>
 
   <!-- TEAM B TRICKS -->
   <div class="tricks-col" id="tricks-col-b">
-    <div class="tricks-col-header teamB">Team B<span class="trick-lead-dot" id="trick-lead-dot-b"></span><span class="trick-count" id="tricks-b-count"></span></div>
+    <div class="tricks-col-header teamB"><span id="tricks-header-b">Team B</span><span class="trick-lead-dot" id="trick-lead-dot-b"></span><span class="trick-count" id="tricks-b-count"></span></div>
     <div class="tricks-rows" id="trick-rows-b"></div>
   </div>
 
@@ -1054,8 +1054,8 @@
     <div id="kitty-in-phase" style="display:none"></div>
     <div id="unplayed-trumps" style="display:none;font-size:13px;color:var(--muted);margin-top:8px"></div>
     <div id="trick-score" style="display:none">
-      Team A: <span id="scoreA-pts">0</span> pts<br>
-      Team B: <span id="scoreB-pts">0</span> pts<br>
+      <span id="score-label-a">Team A</span>: <span id="scoreA-pts">0</span> pts<br>
+      <span id="score-label-b">Team B</span>: <span id="scoreB-pts">0</span> pts<br>
       Tricks left: <span id="tricks-left">9</span>
     </div>
     <div id="host-controls" style="display:none">
@@ -1187,6 +1187,26 @@ const AI_DELAY_MIN = 700;
 const AI_DELAY_MAX = 1100;
 const TRICK_PAUSE = 2000;
 
+const TEAM_NAME_PAIRS = [
+  ['Armadillos', 'Longhorns'],
+  ['Cowboys',    'Outlaws'  ],
+  ['Lone Stars', 'Rangers'  ],
+  ['Rattlers',   'Coyotes'  ],
+  ['Broncos',    'Mustangs' ],
+  ['Bones',      'Stones'   ],
+  ['High Rollers','Low Riders'],
+  ['Aces',       'Deuces'   ],
+  ['Thunder',    'Lightning'],
+  ['Sharks',     'Wolves'   ],
+  ['Vipers',     'Cobras'   ],
+  ['Rockets',    'Comets'   ],
+];
+
+function pickTeamNames() {
+  const pair = TEAM_NAME_PAIRS[Math.floor(Math.random() * TEAM_NAME_PAIRS.length)];
+  return Math.random() < 0.5 ? [...pair] : [pair[1], pair[0]];
+}
+
 // pip layouts: array of 9 booleans for 3×3 grid (top-left→bottom-right)
 const PIP_LAYOUTS = {
   0: [0,0,0, 0,0,0, 0,0,0],
@@ -1297,6 +1317,7 @@ let handSortPip = null; // null = default sort, number = sorted by that pip (loc
 function initGame(restore = null) {
   G = {
     teamScores: restore ? [...restore.teamScores] : [0, 0],
+    teamNames:  restore?.teamNames || pickTeamNames(),
     roundNum: restore ? restore.roundNum : 0,
     bidStartIdx: restore ? restore.bidStartIdx : Math.floor(Math.random() * 6),
     phase: 'deal',
@@ -2357,6 +2378,7 @@ function saveGameState() {
     roomCode: NET.mode === 'host' ? NET.roomCode : undefined,
     roundNum: G.roundNum,
     teamScores: [...G.teamScores],
+    teamNames: [...G.teamNames],
     bidStartIdx: G.bidStartIdx,
     playerNames: [...NET.playerNames],
     playerTypes: [...NET.playerTypes],
@@ -2410,7 +2432,18 @@ function renderPhaseDisplay() {
   document.getElementById('phase-display').textContent = phaseLabel + suffix;
 }
 
+function renderTeamNames() {
+  const [a, b] = G.teamNames;
+  document.getElementById('team-a-label').textContent    = a;
+  document.getElementById('team-b-label').textContent    = b;
+  document.getElementById('tricks-header-a').textContent = a;
+  document.getElementById('tricks-header-b').textContent = b;
+  document.getElementById('score-label-a').textContent   = a;
+  document.getElementById('score-label-b').textContent   = b;
+}
+
 function renderAll() {
+  renderTeamNames();
   renderScoreBar();
   renderPlayerAreas();
   renderTrickArea();
@@ -3151,14 +3184,15 @@ function showResultPanel(marksWon) {
     btn.disabled = false;
   }
 
+  const [tA, tB] = G.teamNames;
   const table = document.getElementById('result-table');
   table.innerHTML = `
-    <tr><td>Team A points</td><td>${G.teamTrickPts[0]}</td></tr>
-    <tr><td>Team B points</td><td>${G.teamTrickPts[1]}</td></tr>
-    <tr><td>Team A marks won</td><td>${marksWon[0]}</td></tr>
-    <tr><td>Team B marks won</td><td>${marksWon[1]}</td></tr>
-    <tr><td>Team A total marks</td><td>${G.teamScores[0]}</td></tr>
-    <tr><td>Team B total marks</td><td>${G.teamScores[1]}</td></tr>
+    <tr><td>${tA} points</td><td>${G.teamTrickPts[0]}</td></tr>
+    <tr><td>${tB} points</td><td>${G.teamTrickPts[1]}</td></tr>
+    <tr><td>${tA} marks won</td><td>${marksWon[0]}</td></tr>
+    <tr><td>${tB} marks won</td><td>${marksWon[1]}</td></tr>
+    <tr><td>${tA} total marks</td><td>${G.teamScores[0]}</td></tr>
+    <tr><td>${tB} total marks</td><td>${G.teamScores[1]}</td></tr>
   `;
 
   const showHandsBtn = document.getElementById('result-show-hands');
@@ -3246,12 +3280,13 @@ function hideResultPanel() {
 function showGameOver() {
   if (NET.mode === 'host' || NET.mode === 'local') clearSavedGame();
   document.getElementById('gameover-overlay').classList.remove('hidden');
-  const winner = G.teamScores[0] >= 7 ? 'Team A' : 'Team B';
-  const isMyTeamA = TEAM[NET.myIdx] === 0;
-  const iWon = (winner === 'Team A' && isMyTeamA) || (winner === 'Team B' && !isMyTeamA);
-  document.getElementById('gameover-title').textContent = iWon ? '🎉 You Win!' : `${winner} Wins`;
+  const [tA, tB] = G.teamNames;
+  const winnerTeam = G.teamScores[0] >= 7 ? 0 : 1;
+  const winner = G.teamNames[winnerTeam];
+  const iWon = TEAM[NET.myIdx] === winnerTeam;
+  document.getElementById('gameover-title').textContent = iWon ? '🎉 You Win!' : `${winner} Win!`;
   document.getElementById('gameover-text').textContent =
-    `Final score: Team A ${G.teamScores[0]}–${G.teamScores[1]} Team B`;
+    `Final score: ${tA} ${G.teamScores[0]}–${G.teamScores[1]} ${tB}`;
   const trophy = document.getElementById('gameover-trophy');
   trophy.textContent = '🏆';
   trophy.classList.remove('hidden');
