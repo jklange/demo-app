@@ -1185,7 +1185,7 @@ const FOLLOW_ME = 7;
 const TEAM = [0, 1, 0, 1, 0, 1]; // player index → team (0=A, 1=B)
 const AI_DELAY_MIN = 700;
 const AI_DELAY_MAX = 1100;
-const TRICK_PAUSE = 1600;
+const TRICK_PAUSE = 2000;
 
 // pip layouts: array of 9 booleans for 3×3 grid (top-left→bottom-right)
 const PIP_LAYOUTS = {
@@ -2167,11 +2167,81 @@ function playDomino(playerIdx, domino) {
     G.trickInProgress = true;
     broadcastState();
     const resolveId = ++G.trickResolveId;
-    setTimeout(() => { if (G.trickResolveId === resolveId) resolveTrick(); }, TRICK_PAUSE);
+    setTimeout(() => { if (G.trickResolveId === resolveId) animateTrickExit(resolveId); }, TRICK_PAUSE);
   } else {
     broadcastState();
     advanceTrick();
   }
+}
+
+let trickAnimating = false;
+let clientTrickAnimPending = false;
+
+function clearTrickDOM() {
+  trickAnimating = false;
+  clientTrickAnimPending = false;
+  document.querySelectorAll('.trick-domino-play').forEach(el => el.remove());
+}
+
+function animateTrickExit(resolveId) {
+  if (NET.mode !== 'client' && G.trickResolveId !== resolveId) return;
+  if (trickAnimating) return;
+
+  const plays = [...document.querySelectorAll('.trick-domino-play')];
+  if (!plays.length) {
+    if (NET.mode !== 'client') resolveTrick();
+    return;
+  }
+  trickAnimating = true;
+
+  // Stop the winner-pulse so all tiles look the same while gathering
+  plays.forEach(el => {
+    const d = el.querySelector('.domino');
+    if (d) d.classList.remove('trick-winning');
+  });
+
+  // Step 1: slide all tiles into a horizontal row at the center of the table
+  requestAnimationFrame(() => {
+    plays.forEach((el, i) => {
+      el.style.zIndex = 30;
+      el.style.transition = 'top 0.5s ease, left 0.5s ease, transform 0.5s ease';
+      el.style.top  = '44%';
+      el.style.left = `${30 + i * 8}%`;   // 30, 38, 46, 54, 62, 70
+      el.style.transform = 'translate(-50%,-50%) rotate(0deg)';
+    });
+  });
+
+  // Step 2: after gather (500ms) + hold (2000ms), sweep toward the winner's side
+  setTimeout(() => {
+    if (NET.mode !== 'client' && G.trickResolveId !== resolveId) { trickAnimating = false; return; }
+
+    const winIdx  = trickWinner(G.currentTrick, G.trump);
+    const dIdx    = dispIdx(G.currentTrick[winIdx].player);
+    const EXIT = [
+      { top:'120%', left:'50%'  },  // 0: bottom
+      { top:'110%', left:'-20%' },  // 1: lower-left
+      { top:'-20%', left:'-20%' },  // 2: upper-left
+      { top:'-20%', left:'50%'  },  // 3: top
+      { top:'-20%', left:'120%' },  // 4: upper-right
+      { top:'110%', left:'120%' },  // 5: lower-right
+    ];
+    const ex = EXIT[dIdx];
+
+    plays.forEach(el => {
+      el.style.transition = 'top 0.45s ease-in, left 0.45s ease-in, opacity 0.35s 0.1s ease-in';
+      el.style.top     = ex.top;
+      el.style.left    = ex.left;
+      el.style.opacity = '0';
+    });
+
+    // Step 3: once tiles are off-screen, resolve the trick
+    setTimeout(() => {
+      if (NET.mode !== 'client' && G.trickResolveId !== resolveId) { trickAnimating = false; return; }
+      trickAnimating = false;
+      plays.forEach(el => el.remove());
+      if (NET.mode !== 'client') resolveTrick();
+    }, 500);
+  }, 2550);  // 500ms gather + 2000ms hold + 50ms buffer
 }
 
 function resolveTrick() {
@@ -2519,6 +2589,7 @@ function renderPlayerAreas() {
 }
 
 function renderTrickArea() {
+  if (trickAnimating) return;
   document.querySelectorAll('.trick-domino-play').forEach(el => el.remove());
   const table = document.getElementById('table');
   const slots = window.innerWidth <= 900  ? TRICK_SLOT_POSITIONS_PHONE
@@ -3360,6 +3431,7 @@ function hostRedoBid(playerIdx) {
 }
 
 function hostRedoPlay(playerIdx) {
+  clearTrickDOM();
   const playIdx = G.currentTrick.findIndex(p => p.player === playerIdx);
   if (playIdx === -1) return;
 
@@ -3389,6 +3461,7 @@ function hostRedoPlay(playerIdx) {
 
 function hostRestartRound() {
   if (!confirm('Restart this round?\n\nAll hands will be re-dealt, bids will be reset, and no marks will be awarded for this round.')) return;
+  clearTrickDOM();
 
   if (G.phase === 'score' && G.lastMarksWon) {
     G.teamScores[0] -= G.lastMarksWon[0];
@@ -3538,10 +3611,19 @@ function handleHostMessage(data) {
       // Kitty phase preserves the player's sort since swaps now use domino IDs, not indices.
       if (G.roundNum !== prevRound || (G.phase === 'play' && prevPhase !== 'play')) {
         handSortPip = null;
+        clientTrickAnimPending = false;
       } else if (handSortPip !== null) {
         sortHandByNumber(G.hands[NET.myIdx], handSortPip);
       }
       renderAll();
+      // Trigger trick-end animation when host signals all 6 tiles are played
+      if (G.phase === 'play' && G.currentTrick.length === 6 && G.trickInProgress && !trickAnimating && !clientTrickAnimPending) {
+        clientTrickAnimPending = true;
+        setTimeout(() => {
+          clientTrickAnimPending = false;
+          if (G.currentTrick.length === 6) animateTrickExit(0);
+        }, TRICK_PAUSE);
+      }
       // Show UI prompts if it's this client's turn
       if (G.phase === 'score') {
         showResultPanel(G.lastMarksWon || [0, 0]);
@@ -3933,6 +4015,7 @@ function setupMediaCallHandler() {
 }
 
 function quitToMenu() {
+  clearTrickDOM();
   if ((NET.mode === 'host' && NET.gameStarted || NET.mode === 'local' && G.roundNum > 0) && G.teamScores[0] < 7 && G.teamScores[1] < 7) saveGameState();
   cleanupMedia();
   if (NET.peer) { NET.peer.destroy(); NET.peer = null; }
