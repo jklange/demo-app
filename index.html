@@ -2221,32 +2221,33 @@ function animateTrickExit(resolveId) {
     if (d) d.classList.remove('trick-winning');
   });
 
-  // Step 1: slide all tiles into a horizontal row at the center of the table
+  // Step 1: slide all tiles into a tight horizontal row at the center of the table.
+  // Compute pixel-accurate positions so tiles are nearly adjacent regardless of screen size.
   requestAnimationFrame(() => {
+    const tableW  = document.getElementById('table').offsetWidth;
+    const tileW   = (plays[0].querySelector('.domino') || plays[0]).offsetWidth || 72;
+    const gap     = 4;  // px between tiles
+    const step    = tileW + gap;
+    const totalW  = plays.length * tileW + (plays.length - 1) * gap;
+    const startPx = (tableW - totalW) / 2 + tileW / 2;  // center of first tile
+
     plays.forEach((el, i) => {
       el.style.zIndex = 30;
       el.style.transition = 'top 0.5s ease, left 0.5s ease, transform 0.5s ease';
       el.style.top  = '44%';
-      el.style.left = `${30 + i * 8}%`;   // 30, 38, 46, 54, 62, 70
+      el.style.left = `${((startPx + i * step) / tableW) * 100}%`;
       el.style.transform = 'translate(-50%,-50%) rotate(0deg)';
     });
   });
 
-  // Step 2: after gather (500ms) + hold (2000ms), sweep toward the winner's side
+  // Step 2: after gather (500ms) + hold (2000ms), sweep left toward the tricks columns.
   setTimeout(() => {
     if (NET.mode !== 'client' && G.trickResolveId !== resolveId) { trickAnimating = false; return; }
 
-    const winIdx  = trickWinner(G.currentTrick, G.trump);
-    const dIdx    = dispIdx(G.currentTrick[winIdx].player);
-    const EXIT = [
-      { top:'120%', left:'50%'  },  // 0: bottom
-      { top:'110%', left:'-20%' },  // 1: lower-left
-      { top:'-20%', left:'-20%' },  // 2: upper-left
-      { top:'-20%', left:'50%'  },  // 3: top
-      { top:'-20%', left:'120%' },  // 4: upper-right
-      { top:'110%', left:'120%' },  // 5: lower-right
-    ];
-    const ex = EXIT[dIdx];
+    const winIdx    = trickWinner(G.currentTrick, G.trump);
+    const winTeam   = TEAM[G.currentTrick[winIdx].player];
+    // Team 0's column is upper-left, team 1's column is lower-left
+    const ex = { top: winTeam === 0 ? '25%' : '65%', left: '-15%' };
 
     plays.forEach(el => {
       el.style.transition = 'top 0.45s ease-in, left 0.45s ease-in, opacity 0.35s 0.1s ease-in';
