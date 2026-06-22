@@ -2215,6 +2215,11 @@ function animateTrickExit(resolveId) {
   }
   trickAnimating = true;
 
+  // Snapshot trick/trump so delayed callbacks are safe even if an incoming
+  // state message clears G.currentTrick before the timers fire.
+  const trickSnap = [...G.currentTrick];
+  const trumpSnap = G.trump;
+
   // Stop the winner-pulse so all tiles look the same while gathering
   plays.forEach(el => {
     const d = el.querySelector('.domino');
@@ -2244,8 +2249,18 @@ function animateTrickExit(resolveId) {
   setTimeout(() => {
     if (NET.mode !== 'client' && G.trickResolveId !== resolveId) { trickAnimating = false; return; }
 
-    const winIdx    = trickWinner(G.currentTrick, G.trump);
-    const winTeam   = TEAM[G.currentTrick[winIdx].player];
+    // Guard: if the snapshot is somehow empty (timer fired very late after state
+    // was already replaced), abort cleanly rather than crashing and leaving
+    // trickAnimating stuck as true.
+    if (!trickSnap.length) {
+      trickAnimating = false;
+      plays.forEach(el => el.remove());
+      renderTrickArea();
+      return;
+    }
+
+    const winIdx  = trickWinner(trickSnap, trumpSnap);
+    const winTeam = TEAM[trickSnap[winIdx].player];
     // Team 0's column is upper-left, team 1's column is lower-left
     const ex = { top: winTeam === 0 ? '25%' : '65%', left: '-15%' };
 
@@ -2262,6 +2277,7 @@ function animateTrickExit(resolveId) {
       trickAnimating = false;
       plays.forEach(el => el.remove());
       if (NET.mode !== 'client') resolveTrick();
+      else renderTrickArea();  // repaint current state in case updates arrived while animating
     }, 500);
   }, 2550);  // 500ms gather + 2000ms hold + 50ms buffer
 }
