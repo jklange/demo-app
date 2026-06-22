@@ -2852,6 +2852,7 @@ function showBidPanel() {
   document.getElementById('bid-bar').style.display = '';
   document.getElementById('bid-summary-view').style.display = 'none';
   document.getElementById('host-bid-for-bar').style.display = 'none';
+  document.getElementById('bid-indication').checked = false;
 
   const hb = G.highBid;
   const minNumeric = hb && !hb.isMarks ? hb.amount + 1 : 60;
