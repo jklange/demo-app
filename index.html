@@ -447,7 +447,32 @@
     }
     #bid-overlay.hidden { display: none; }
     #bid-overlay.pulsing { animation: bid-pulse 2s ease-in-out infinite; }
-    #bid-bar, #kitty-bar {
+    #bid-bar {
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      gap: 0;
+    }
+    #bid-controls-row {
+      display: flex;
+      align-items: center;
+      padding: 5px 10px;
+      gap: 0;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      min-height: 44px;
+    }
+    #bid-actions-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 5px 10px;
+      border-top: 1px solid var(--border);
+      min-height: 44px;
+      flex-shrink: 0;
+    }
+    #kitty-bar {
       display: flex;
       align-items: center;
       padding: 5px 10px;
@@ -486,7 +511,7 @@
       margin-right: 3px;
       white-space: nowrap;
     }
-    #bid-bar .trump-options {
+    #bid-controls-row .trump-options {
       display: flex;
       gap: 3px;
       flex-wrap: nowrap;
@@ -1073,27 +1098,28 @@
 <!-- BID BAR (hidden until it's your turn to bid) -->
 <div class="hidden" id="bid-overlay">
   <div id="bid-bar">
-    <span id="bid-panel-context" class="bid-bar-context"></span>
-    <div class="bid-bar-sep"></div>
-    <div class="bid-bar-group">
-      <span class="bid-bar-label">Trump</span>
-      <div class="trump-options" id="trump-options"></div>
+    <div id="bid-controls-row">
+      <span id="bid-panel-context" class="bid-bar-context"></span>
+      <div class="bid-bar-sep"></div>
+      <div class="bid-bar-group">
+        <span class="bid-bar-label">Trump</span>
+        <div class="trump-options" id="trump-options"></div>
+      </div>
+      <div class="bid-bar-sep"></div>
+      <div class="bid-bar-group">
+        <span class="bid-bar-label">Bid</span>
+        <button class="btn btn-muted" id="bid-dec">−</button>
+        <input class="num-input" type="number" id="bid-amount" value="60" min="60" max="87" />
+        <button class="btn btn-muted" id="bid-inc">+</button>
+      </div>
+      <div class="bid-bar-sep"></div>
+      <div class="bid-bar-group">
+        <div class="marks-row" id="mark-bids-row"></div>
+      </div>
+      <div class="bid-bar-sep"></div>
+      <label class="indication-label"><input type="checkbox" id="bid-indication"> Indication</label>
     </div>
-    <div class="bid-bar-sep"></div>
-    <div class="bid-bar-group">
-      <span class="bid-bar-label">Bid</span>
-      <button class="btn btn-muted" id="bid-dec">−</button>
-      <input class="num-input" type="number" id="bid-amount" value="60" min="60" max="87" />
-      <button class="btn btn-muted" id="bid-inc">+</button>
-    </div>
-    <div class="bid-bar-sep"></div>
-    <div class="bid-bar-group">
-      <div class="marks-row" id="mark-bids-row"></div>
-    </div>
-    <div class="bid-bar-sep"></div>
-    <label class="indication-label"><input type="checkbox" id="bid-indication"> Indication</label>
-    <div class="bid-bar-sep"></div>
-    <div class="bid-bar-group" style="gap: 20px;">
+    <div id="bid-actions-row">
       <button class="btn btn-primary" id="bid-submit" style="padding-left:24px;padding-right:24px">Bid</button>
       <button class="btn btn-danger" id="bid-pass" style="padding-left:24px;padding-right:24px">Pass</button>
     </div>
@@ -5024,6 +5050,19 @@ function testLastBidPass() {
     startDrag(e.touches[0].clientX, e.touches[0].clientY);
   }, { passive: false });
 })();
+
+// Prevent pinch-to-zoom on mobile (meta tag user-scalable=no is ignored by modern iOS/Android)
+document.addEventListener('touchmove', e => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+// Prevent double-tap zoom
+let _lastTap = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - _lastTap < 300) e.preventDefault();
+  _lastTap = now;
+}, false);
 </script>
 </body>
 </html>
