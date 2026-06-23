@@ -447,13 +447,8 @@
     }
     #bid-overlay.hidden { display: none; }
     #bid-overlay.pulsing { animation: bid-pulse 2s ease-in-out infinite; }
+    /* Large screens: everything in one scrollable row */
     #bid-bar {
-      display: flex;
-      flex-direction: column;
-      padding: 0;
-      gap: 0;
-    }
-    #bid-controls-row {
       display: flex;
       align-items: center;
       padding: 5px 10px;
@@ -462,15 +457,38 @@
       flex-wrap: nowrap;
       min-height: 44px;
     }
-    #bid-actions-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      padding: 5px 10px;
-      border-top: 1px solid var(--border);
-      min-height: 44px;
-      flex-shrink: 0;
+    #bid-row-trump, #bid-row-controls { display: contents; }
+
+    /* iPad and smaller: trump on row 1, everything else on row 2 */
+    @media (max-width: 1024px) {
+      #bid-bar {
+        flex-direction: column;
+        padding: 0;
+        overflow: visible;
+        min-height: unset;
+        align-items: stretch;
+      }
+      #bid-row-trump {
+        display: flex;
+        align-items: center;
+        padding: 5px 10px;
+        gap: 0;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        min-height: 44px;
+      }
+      /* hide the trailing separator that bridges to row 2 on large screens */
+      #bid-row-trump > .bid-bar-sep:last-child { display: none; }
+      #bid-row-controls {
+        display: flex;
+        align-items: center;
+        padding: 5px 10px;
+        gap: 0;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        min-height: 44px;
+        border-top: 1px solid var(--border);
+      }
     }
     #kitty-bar {
       display: flex;
@@ -511,7 +529,7 @@
       margin-right: 3px;
       white-space: nowrap;
     }
-    #bid-controls-row .trump-options {
+    #bid-row-trump .trump-options {
       display: flex;
       gap: 3px;
       flex-wrap: nowrap;
@@ -1098,7 +1116,7 @@
 <!-- BID BAR (hidden until it's your turn to bid) -->
 <div class="hidden" id="bid-overlay">
   <div id="bid-bar">
-    <div id="bid-controls-row">
+    <div id="bid-row-trump">
       <span id="bid-panel-context" class="bid-bar-context"></span>
       <div class="bid-bar-sep"></div>
       <div class="bid-bar-group">
@@ -1106,6 +1124,8 @@
         <div class="trump-options" id="trump-options"></div>
       </div>
       <div class="bid-bar-sep"></div>
+    </div>
+    <div id="bid-row-controls">
       <div class="bid-bar-group">
         <span class="bid-bar-label">Bid</span>
         <button class="btn btn-muted" id="bid-dec">−</button>
@@ -1118,10 +1138,11 @@
       </div>
       <div class="bid-bar-sep"></div>
       <label class="indication-label"><input type="checkbox" id="bid-indication"> Indication</label>
-    </div>
-    <div id="bid-actions-row">
-      <button class="btn btn-primary" id="bid-submit" style="padding-left:24px;padding-right:24px">Bid</button>
-      <button class="btn btn-danger" id="bid-pass" style="padding-left:24px;padding-right:24px">Pass</button>
+      <div class="bid-bar-sep"></div>
+      <div class="bid-bar-group" style="gap:16px">
+        <button class="btn btn-primary" id="bid-submit" style="padding-left:24px;padding-right:24px">Bid</button>
+        <button class="btn btn-danger" id="bid-pass" style="padding-left:24px;padding-right:24px">Pass</button>
+      </div>
     </div>
   </div>
   <div id="bid-summary-view">
