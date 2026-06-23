@@ -608,6 +608,24 @@
     .trump-btn.follow-me.selected { border-style: dashed; }
     .trump-btn:disabled { opacity: 0.3; cursor: not-allowed; }
     .trump-btn:disabled:hover { border-color: var(--border); }
+    @keyframes pulse-trump-teamA {
+      0%, 100% { box-shadow: 0 0 0 2px rgba(74,158,255,0.55); }
+      50%       { box-shadow: 0 0 0 5px rgba(74,158,255,0); }
+    }
+    @keyframes pulse-trump-teamB {
+      0%, 100% { box-shadow: 0 0 0 2px rgba(255,107,107,0.55); }
+      50%       { box-shadow: 0 0 0 5px rgba(255,107,107,0); }
+    }
+    @keyframes pulse-trump-both {
+      0%, 100% { box-shadow: 0 0 0 2px rgba(155,89,182,0.55); }
+      50%       { box-shadow: 0 0 0 5px rgba(155,89,182,0); }
+    }
+    .trump-btn.bid-teamA { color: var(--teamA); border-color: var(--teamA); animation: pulse-trump-teamA 1.5s ease-in-out infinite; }
+    .trump-btn.bid-teamB { color: var(--teamB); border-color: var(--teamB); animation: pulse-trump-teamB 1.5s ease-in-out infinite; }
+    .trump-btn.bid-both  { color: #9b59b6;      border-color: #9b59b6;      animation: pulse-trump-both  1.5s ease-in-out infinite; }
+    .trump-btn.bid-teamA.selected { background: rgba(74,158,255,0.2); }
+    .trump-btn.bid-teamB.selected { background: rgba(255,107,107,0.2); }
+    .trump-btn.bid-both.selected  { background: rgba(155,89,182,0.2); }
     .btn {
       padding: 5px 12px;
       border-radius: 5px;
@@ -2992,6 +3010,16 @@ function showBidPanel() {
       bidSelectedTrump = [0,1,2,3,4,5,6].find(i => hasPip(i)) ?? FOLLOW_ME;
     }
   }
+  // Which suit values have been bid by each team (excluding the current bidder)?
+  const currentBidderIdx = hostBidFor ?? NET.myIdx;
+  const suitTeamA = new Set(), suitTeamB = new Set();
+  (G.playerBids || []).forEach((bid, pi) => {
+    if (pi === currentBidderIdx) return;
+    if (!bid || bid === 'pass' || bid.isMarks) return;
+    if (TEAM[pi] === 0) suitTeamA.add(bid.trump);
+    else                suitTeamB.add(bid.trump);
+  });
+
   TRUMP_NAMES.forEach((name, i) => {
     const btn = document.createElement('button');
     btn.className = `trump-btn${i === bidSelectedTrump ? ' selected' : ''}${i === FOLLOW_ME ? ' follow-me' : ''}`;
@@ -3000,6 +3028,12 @@ function showBidPanel() {
     btn.textContent = i === FOLLOW_ME ? 'FM' : String(i);
     if (i === FOLLOW_ME) btn.style.fontStyle = 'italic';
     btn.addEventListener('click', () => selectBidTrump(i));
+
+    const a = suitTeamA.has(i), b = suitTeamB.has(i);
+    if (a && b)    btn.classList.add('bid-both');
+    else if (a)    btn.classList.add('bid-teamA');
+    else if (b)    btn.classList.add('bid-teamB');
+
     trumpOpts.appendChild(btn);
   });
 
