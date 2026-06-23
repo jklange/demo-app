@@ -914,16 +914,16 @@
       #right-panel h3    { font-size: 13px; }
       #phase-display, #bid-info, #trump-display, #trick-score { font-size: 14px; }
 
-      /* Hand & trick dominoes: same size on iPad (43×80px) */
+      /* Hand & trick dominoes: same size on iPad (47×88px) */
       #human-hand { gap: 3px; }
-      #human-hand .domino.vertical { width: 43px; height: 80px; border-radius: 5px; border-width: 2px; }
-      #human-hand .domino.vertical .pip-grid { width: 26px; height: 26px; }
-      #human-hand .domino.vertical .pip      { width:  5px; height:  5px; }
+      #human-hand .domino.vertical { width: 47px; height: 88px; border-radius: 6px; border-width: 2px; }
+      #human-hand .domino.vertical .pip-grid { width: 29px; height: 29px; }
+      #human-hand .domino.vertical .pip      { width:  6px; height:  6px; }
       #human-hand .domino.vertical .divider  { height: 1px; margin: 0 4px; }
 
-      .trick-domino-play .domino.vertical                { width: 43px; height: 80px; border-radius: 5px; border-width: 2px; }
-      .trick-domino-play .domino.vertical .pip-grid      { width: 26px; height: 26px; }
-      .trick-domino-play .domino.vertical .pip           { width:  5px; height:  5px; }
+      .trick-domino-play .domino.vertical                { width: 47px; height: 88px; border-radius: 6px; border-width: 2px; }
+      .trick-domino-play .domino.vertical .pip-grid      { width: 29px; height: 29px; }
+      .trick-domino-play .domino.vertical .pip           { width:  6px; height:  6px; }
       .trick-domino-play .domino.vertical .divider       { height: 1px; margin: 0 4px; }
     }
 
@@ -1131,6 +1131,7 @@
     <div id="host-controls" style="display:none">
       <h3>Host</h3>
       <button class="btn btn-danger" id="host-restart-btn" style="font-size:12px;padding:4px 8px">Restart Round</button>
+      <button class="btn btn-muted" id="host-restart-bid-btn" style="font-size:12px;padding:4px 8px;display:none">Restart Bidding</button>
       <div id="host-redo-list"></div>
     </div>
     <div id="log-section">
@@ -1257,7 +1258,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.6';
+const VERSION = 'v1.7';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -3535,6 +3536,10 @@ function renderHostControls() {
   const isMultiplayer = NET.mode !== 'local';
   document.getElementById('host-restart-btn').style.display = isMultiplayer ? '' : 'none';
 
+  const canRestartBid = isMultiplayer && (G.phase === 'bid' || G.phase === 'kitty') &&
+    G.playerBids && G.playerBids.some(b => b !== null);
+  document.getElementById('host-restart-bid-btn').style.display = canRestartBid ? '' : 'none';
+
   const redoList = document.getElementById('host-redo-list');
   redoList.innerHTML = '';
 
@@ -3627,6 +3632,29 @@ function hostRedoBid(playerIdx) {
   hideBidPanel();
   log(`Host allows ${name} to re-bid. All bids after ${name} have been cleared.`, 'highlight');
   G.currentBidder = playerIdx;
+  renderAll();
+  broadcastState();
+  advanceBid();
+}
+
+function hostRestartBidding() {
+  if (!confirm('Restart bidding for this round?\n\nAll bids will be cleared and the whole table bids again. Hands are kept as dealt.')) return;
+
+  hideBidPanel();
+  hideKittyPanel();
+
+  G.currentBidder = G.bidStartIdx;
+  G.highBid = null;
+  G.bidWinner = null;
+  G.bidActed = [false, false, false, false, false, false];
+  G.bidPassed = [false, false, false, false, false, false];
+  G.playerBids = [null, null, null, null, null, null];
+  G.trump = null;
+  G.awaitingPlayer = null;
+  G.phase = 'bid';
+  preMove = null;
+
+  log('Host restarted bidding. All bids cleared — hands remain as dealt.', 'highlight');
   renderAll();
   broadcastState();
   advanceBid();
@@ -5071,6 +5099,7 @@ document.getElementById('quit-btn').addEventListener('click', () => {
 });
 
 document.getElementById('host-restart-btn').addEventListener('click', hostRestartRound);
+document.getElementById('host-restart-bid-btn').addEventListener('click', hostRestartBidding);
 
 document.getElementById('menu-singleplayer').addEventListener('click', () => {
   hideMainMenu();
