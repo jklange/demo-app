@@ -2209,8 +2209,12 @@ function toggleMuteSound() {
   document.getElementById('mute-btn').textContent = soundMuted ? '\u{1F507}' : '\u{1F50A}';
 }
 
+let _lastDominoSoundMs = 0;
 function playDominoSound() {
   if (soundMuted) return;
+  const now = Date.now();
+  if (now - _lastDominoSoundMs < 300) return;
+  _lastDominoSoundMs = now;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const buf = ctx.createBuffer(1, ctx.sampleRate * 0.12, ctx.sampleRate);
@@ -2700,6 +2704,52 @@ function renderPlayerAreas() {
   if (NET.videoActive) renderVideoGrid();
 }
 
+// Fly the human's played domino from its hand position to the trick slot.
+// srcRect: getBoundingClientRect() of the clicked domino (captured before DOM changes).
+function animateHumanPlay(srcRect, domino, onComplete) {
+  const srcCX = srcRect.left + srcRect.width  / 2;
+  const srcCY = srcRect.top  + srcRect.height / 2;
+
+  const table     = document.getElementById('table');
+  const tableRect = table.getBoundingClientRect();
+  const slots = window.innerWidth <= 900  ? TRICK_SLOT_POSITIONS_PHONE
+              : window.innerWidth <= 1400 ? TRICK_SLOT_POSITIONS_IPAD
+              : TRICK_SLOT_POSITIONS;
+  const pos   = slots[0]; // human is always display index 0
+  const destCX = tableRect.left + tableRect.width  * parseFloat(pos.left) / 100;
+  const destCY = tableRect.top  + tableRect.height * parseFloat(pos.top)  / 100;
+
+  // Build a trick-sized clone (same class/CSS as renderTrickArea uses)
+  const isTrumpD = G.trump !== null && isTrump(domino, G.trump);
+  const wrap = document.createElement('div');
+  wrap.className = 'trick-domino-play';
+  wrap.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;transform-origin:center center;';
+  wrap.appendChild(buildDomino(domino, false, false, isTrumpD));
+  document.body.appendChild(wrap);
+
+  // Measure natural (trick-sized) dimensions before any transform
+  const { width: w, height: h } = wrap.getBoundingClientRect();
+  const startScale = srcRect.width / (w || 1);
+
+  // Place the clone at its final destination, then offset it back to the source
+  wrap.style.left = `${destCX - w / 2}px`;
+  wrap.style.top  = `${destCY - h / 2}px`;
+  const dx = srcCX - destCX;
+  const dy = srcCY - destCY;
+  wrap.style.transform = `translate(${dx}px,${dy}px) scale(${startScale}) rotate(0deg)`;
+
+  // Two rAF frames ensure the browser has painted the initial state before transitioning
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    wrap.style.transition = 'transform 0.38s cubic-bezier(0.22,0.61,0.36,1)';
+    wrap.style.transform  = `translate(0,0) scale(1) rotate(${pos.rotate}deg)`;
+  }));
+
+  let _done = false;
+  const finish = () => { if (_done) return; _done = true; wrap.remove(); onComplete(); };
+  wrap.addEventListener('transitionend', finish, { once: true });
+  setTimeout(finish, 600); // fallback if transitionend never fires
+}
+
 function renderTrickArea() {
   if (trickAnimating) return;
   document.querySelectorAll('.trick-domino-play').forEach(el => el.remove());
@@ -2781,17 +2831,21 @@ function renderHumanHand() {
         if (G.awaitingPlayer !== NET.myIdx) return;
         if (!canPlay(d, G.currentTrick, myHand, G.trump)) return;
 
+        // Capture position before any DOM changes
+        const srcRect = el.getBoundingClientRect();
+        preMove = null;
+        G.awaitingPlayer = null;
+        playDominoSound();
+        // Remove domino from hand display immediately so the hand re-renders without it
+        G.hands[NET.myIdx] = G.hands[NET.myIdx].filter(x => dominoId(x) !== dominoId(d));
+        renderHumanHand();
+
         if (NET.mode === 'client') {
-          preMove = null;
-          sendToHost({ type: 'play', domino: d });
-          G.awaitingPlayer = null;
-          renderHumanHand();
+          animateHumanPlay(srcRect, d, () => sendToHost({ type: 'play', domino: d }));
           return;
         }
 
-        preMove = null;
-        G.awaitingPlayer = null;
-        playDomino(NET.myIdx, d);
+        animateHumanPlay(srcRect, d, () => playDomino(NET.myIdx, d));
       });
     } else if (canPreMove && wouldBeLegal) {
       el.style.cursor = 'pointer';
