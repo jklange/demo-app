@@ -21,6 +21,10 @@ Everything lives in `index.html`:
 - **Quick Note** — debounced `localStorage` save under `demo-note`
 - **Activity Chart** — random bar data, re-rendered on click or `randomizeChart()`
 
+## Version Number
+
+The app displays its version via `const VERSION = 'vX.Y'` in `index.html`. A pre-commit git hook auto-increments the last number on every commit, so **do not manually change the version** — it will be bumped automatically. If the hook is not present, increment the minor version (e.g. `v1.4` → `v1.5`) before committing.
+
 ## Git Workflow
 
 **After completing any unit of work, always commit and push to GitHub.** This ensures work is never lost and the repo always reflects the current state.
