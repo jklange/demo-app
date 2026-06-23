@@ -318,17 +318,14 @@
     #human-hint { font-size: 32px; }
 
     #human-hand-area {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 20;
+      flex-shrink: 0;
       padding: 8px 12px;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 6px;
-      background: linear-gradient(transparent, rgba(0,0,0,0.6));
+      background: var(--bg);
+      border-top: 2px solid var(--border);
     }
     #human-hand {
       display: flex;
@@ -1074,13 +1071,6 @@
   <div id="table">
     <!-- player areas positioned by JS -->
     <div id="trick-area"></div>
-    <div id="human-hand-area">
-      <div id="human-name-label" class="player-label teamA"></div>
-      <div id="human-bid-badge" class="bid-badge" style="display:none"></div>
-      <div class="human-turn-dot-wrap"><div id="human-turn-dot" class="turn-dot" style="display:none"></div></div>
-      <div style="color:var(--muted)" id="human-hint"></div>
-      <div id="human-hand"></div>
-    </div>
   </div>
 
   <!-- RIGHT PANEL -->
@@ -1111,6 +1101,15 @@
       <div id="log-entries"></div>
     </div>
   </div>
+</div>
+
+<!-- HUMAN HAND AREA — own section so nothing from the table can overlay it -->
+<div id="human-hand-area">
+  <div id="human-name-label" class="player-label teamA"></div>
+  <div id="human-bid-badge" class="bid-badge" style="display:none"></div>
+  <div class="human-turn-dot-wrap"><div id="human-turn-dot" class="turn-dot" style="display:none"></div></div>
+  <div style="color:var(--muted)" id="human-hint"></div>
+  <div id="human-hand"></div>
 </div>
 
 <!-- BID BAR (hidden until it's your turn to bid) -->
