@@ -746,6 +746,16 @@
     }
 
     /* round result */
+    #result-winner {
+      text-align: center;
+      padding: 14px 20px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid currentColor;
+    }
+    #result-winner .rw-team  { font-size: 22px; font-weight: 800; letter-spacing: 0.03em; }
+    #result-winner .rw-marks { font-size: 15px; opacity: 0.85; margin-top: 4px; }
+
     #result-panel .result-table {
       font-size: 16px;
       width: 100%;
@@ -1229,6 +1239,7 @@
 <div class="overlay hidden" id="result-overlay">
   <div class="panel" id="result-panel">
     <div id="result-left">
+      <div id="result-winner"></div>
       <h2 id="result-title">Round Over</h2>
       <p id="result-summary"></p>
       <table class="result-table" id="result-table"></table>
@@ -1278,7 +1289,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.9';
+const VERSION = 'v1.10';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -3392,7 +3403,18 @@ function showResultPanel(marksWon) {
     btn.disabled = false;
   }
 
-  const [tA, tB] = G.teamNames;
+  // Winner banner — show winning team name + marks in team color
+  const winTeam   = marksWon[0] > 0 ? 0 : 1;
+  const winMarks  = marksWon[winTeam];
+  const [tA, tB]  = G.teamNames;
+  const winName   = winTeam === 0 ? tA : tB;
+  const winColor  = winTeam === 0 ? 'var(--teamA)' : 'var(--teamB)';
+  const winnerEl  = document.getElementById('result-winner');
+  winnerEl.style.color = winColor;
+  winnerEl.innerHTML = `
+    <div class="rw-team">${winName} wins!</div>
+    <div class="rw-marks">+${winMarks} mark${winMarks !== 1 ? 's' : ''} this round</div>`;
+
   const table = document.getElementById('result-table');
   table.innerHTML = `
     <tr><td>${tA} points</td><td>${G.teamTrickPts[0]}</td></tr>
