@@ -131,8 +131,10 @@
       aspect-ratio: 1;
     }
     .trick-dominoes-row .domino.mini .pip {
-      width: 23%;
-      height: 23%;
+      /* % resolves against the pip's grid cell (1/3 of pip-grid), not the
+         whole grid, so this must be ~3x the cell-to-grid pip ratio */
+      width: 70%;
+      height: 70%;
     }
     .trick-pts-badge {
       font-size: 16px;
@@ -1251,7 +1253,6 @@
   <div class="panel" id="result-panel">
     <div id="result-left">
       <div id="result-winner"></div>
-      <h2 id="result-title">Round Over</h2>
       <p id="result-summary"></p>
       <table class="result-table" id="result-table"></table>
       <button class="btn btn-muted" id="result-show-hands" style="display:none">Show Hands</button>
@@ -1304,7 +1305,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.14';
+const VERSION = 'v1.15';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -3543,7 +3544,6 @@ function showResultPanel(marksWon) {
   overlay.classList.remove('hidden');
   const hb = G.highBid;
   const bidStr = hb.isMarks ? `${hb.amount} mark(s)` : `${hb.amount}${hb.indication ? ' [IND]' : ''}`;
-  document.getElementById('result-title').textContent = 'Round Complete';
   document.getElementById('result-summary').textContent =
     `P${hb.player} bid ${bidStr} in ${hb.trump === FOLLOW_ME ? 'Follow Me (no trump)' : TRUMP_NAMES[hb.trump]}`;
   const btn = document.getElementById('result-continue');
