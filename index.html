@@ -1271,9 +1271,13 @@
 <!-- MAIN MENU -->
 <div class="overlay" id="menu-overlay">
   <div class="panel" id="menu-panel" style="text-align:center;align-items:center">
-    <h2>Eighty Eight</h2>
-    <p>Texas Dominoes</p>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;width:100%">
+    <h2>Texas Dominoes</h2>
+    <div style="display:flex;gap:12px;margin-bottom:8px;width:100%">
+      <button class="btn btn-gold" id="menu-gt-42" style="flex:1;font-size:18px;font-weight:700">42</button>
+      <button class="btn btn-muted" id="menu-gt-88" style="flex:1;font-size:18px;font-weight:700">88</button>
+    </div>
+    <div id="menu-game-subtitle" style="font-size:13px;color:var(--muted);margin-bottom:8px">Choose a game type to continue</div>
+    <div id="menu-play-buttons" style="display:none;flex-direction:column;gap:10px;width:100%">
       <button class="btn btn-gold" id="menu-singleplayer">Start Single Player Game</button>
       <button class="btn btn-primary" id="menu-host">Host Multiplayer Game</button>
       <button class="btn btn-muted" id="menu-join">Join Multiplayer Game</button>
@@ -1289,11 +1293,12 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.10';
+const VERSION = 'v1.11';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
-const TEAM = [0, 1, 0, 1, 0, 1]; // player index → team (0=A, 1=B)
+let TEAM = [0, 1, 0, 1, 0, 1]; // player index → team (0=A, 1=B), reset in initGame()
+let pendingGameType = '42'; // set by menu selection before initGame()
 const AI_DELAY_MIN = 700;
 const AI_DELAY_MAX = 1100;
 const TRICK_PAUSE = 2000;
@@ -1379,6 +1384,26 @@ const TRICK_SLOT_POSITIONS_PHONE = [
   { top:'56%', left:'70%', rotate:  30 },   // 5: 4 o'clock     — raised from 66%
 ];
 
+// 42: 4-player layout — bottom=me(0), right=opp(1), top=partner(2), left=opp(3)
+const SEAT_POSITIONS_42 = [
+  null,                                                              // 0: human (bottom)
+  { top:'50%', right:'4%', transform:'translateY(-50%)' },          // 1: right opponent
+  { top:'5%',  left:'50%', transform:'translateX(-50%)' },          // 2: top (partner)
+  { top:'50%', left:'4%',  transform:'translateY(-50%)' },          // 3: left opponent
+];
+const SEAT_POSITIONS_42_IPAD = [
+  null,
+  { top:'50%', right:'4%', transform:'translateY(-50%)' },
+  { top:'5%',  left:'50%', transform:'translateX(-50%)' },
+  { top:'50%', left:'4%',  transform:'translateY(-50%)' },
+];
+const TRICK_SLOT_POSITIONS_42 = [
+  { top:'65%', left:'50%', rotate:   0 },  // 0: me (bottom)
+  { top:'50%', left:'75%', rotate: -90 },  // 1: right opponent
+  { top:'26%', left:'50%', rotate:  90 },  // 2: top partner
+  { top:'50%', left:'25%', rotate:  90 },  // 3: left opponent
+];
+
 // ─────────────────────────────────────────────
 // NETWORK STATE
 // ─────────────────────────────────────────────
@@ -1390,8 +1415,8 @@ let NET = {
   hostConn: null,     // client only
   roomCode: '',
   // 'human' = local human, 'ai' = AI, 'remote' = remote human, 'open' = waiting for human
-  playerTypes: ['human', 'ai', 'ai', 'ai', 'ai', 'ai'],
-  playerNames: ['', 'P1', 'P2', 'P3', 'P4', 'P5'],
+  playerTypes: pendingGameType === '42' ? ['human', 'ai', 'ai', 'ai'] : ['human', 'ai', 'ai', 'ai', 'ai', 'ai'],
+  playerNames: pendingGameType === '42' ? ['', 'P1', 'P2', 'P3'] : ['', 'P1', 'P2', 'P3', 'P4', 'P5'],
   myName: '',         // local player's chosen display name (clients)
   gameStarted: false,
   dropTimers: {},        // seatIdx → timer (unused, kept for cleanup compatibility)
@@ -1413,7 +1438,8 @@ let NET = {
 
 // Map logical player index to display position (0 = bottom / local human)
 function dispIdx(logicalIdx) {
-  return (logicalIdx - NET.myIdx + 6) % 6;
+  const n = G.numPlayers || 6;
+  return (logicalIdx - NET.myIdx + n) % n;
 }
 
 // ─────────────────────────────────────────────
@@ -1426,19 +1452,29 @@ let preMove = null; // domino pre-selected by human to auto-play on their next t
 let handSortPip = null; // null = default sort, number = sorted by that pip (local only, not shared state)
 
 function initGame(restore = null) {
+  const gt = restore?.gameType || pendingGameType || '88';
+  const np = gt === '42' ? 4 : 6;
+  TEAM = Array.from({length: np}, (_, i) => i % 2);
   G = {
+    gameType:       gt,
+    numPlayers:     np,
+    numSets:        gt === '42' ? 1 : 2,
+    tricksPerRound: gt === '42' ? 7 : 9,
+    bidMin:         gt === '42' ? 30 : 60,
+    bidMax:         gt === '42' ? 41 : 87,
+    totalPoints:    gt === '42' ? 42 : 88,
     teamScores: restore ? [...restore.teamScores] : [0, 0],
     teamNames:  restore?.teamNames || pickTeamNames(),
     roundNum: restore ? restore.roundNum : 0,
-    bidStartIdx: restore ? restore.bidStartIdx : Math.floor(Math.random() * 6),
+    bidStartIdx: restore ? restore.bidStartIdx : Math.floor(Math.random() * np),
     phase: 'deal',
-    hands: [[], [], [], [], [], []],
-    kitty: [],
+    hands: Array.from({length: np}, () => []),
+    kitty: gt === '88' ? [] : undefined,
     currentBidder: 0,
     highBid: null,
-    bidPassed: [false, false, false, false, false, false],
-    kittySwapPending: [],
-    handSwapPending: [],
+    bidPassed: Array(np).fill(false),
+    kittySwapPending: gt === '88' ? [] : undefined,
+    handSwapPending:  gt === '88' ? [] : undefined,
     trump: null,
     bidWinner: 0,
     trickLeader: 0,
@@ -1468,6 +1504,14 @@ function createDeck() {
   return deck; // 28×2 = 56
 }
 
+function createDeck42() {
+  const deck = [];
+  for (let h = 0; h <= 6; h++)
+    for (let l = 0; l <= h; l++)
+      deck.push({ h, l, s: 1 });
+  return deck; // 28 tiles
+}
+
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -1477,11 +1521,14 @@ function shuffle(arr) {
 }
 
 function deal() {
-  const deck = shuffle(createDeck());
-  for (let p = 0; p < 6; p++) {
-    G.hands[p] = deck.slice(p * 9, p * 9 + 9);
+  if (G.gameType === '42') {
+    const deck = shuffle(createDeck42());
+    for (let p = 0; p < 4; p++) G.hands[p] = deck.slice(p * 7, p * 7 + 7);
+  } else {
+    const deck = shuffle(createDeck());
+    for (let p = 0; p < 6; p++) G.hands[p] = deck.slice(p * 9, p * 9 + 9);
+    G.kitty = deck.slice(54, 56);
   }
-  G.kitty = deck.slice(54, 56);
 }
 
 function dominoId(d) { return `${d.h}-${d.l}-${d.s}`; }
@@ -1562,14 +1609,15 @@ function trickPoints(trick) {
 // BID LOGIC
 // ─────────────────────────────────────────────
 function validNumericBid(highBid) {
-  if (!highBid || highBid.isMarks) return 60;
+  if (!highBid || highBid.isMarks) return G.bidMin || 60;
   return highBid.amount + 1;
 }
 
-function formatBidLabel(bid) {
+function formatBidLabel(bid, showTrump = true) {
   if (!bid) return null;
   if (bid === 'pass') return 'Pass';
-  return bid.isMarks ? `${bid.amount}mk ${TRUMP_NAMES[bid.trump]}` : `${bid.amount} ${TRUMP_NAMES[bid.trump]}${bid.indication ? ' [IND]' : ''}`;
+  const trumpPart = showTrump && bid.trump != null ? ` ${TRUMP_NAMES[bid.trump]}` : '';
+  return bid.isMarks ? `${bid.amount}mk${trumpPart}` : `${bid.amount}${trumpPart}${bid.indication ? ' [IND]' : ''}`;
 }
 
 function aiChooseBid(playerIdx) {
@@ -1608,7 +1656,7 @@ function aiChooseBid(playerIdx) {
 
   // Consider supporting a partner's suit if we hold 2+ trumps including a high one
   let supportSuit = -1, supportSuitWeight = -1;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < G.numPlayers; i++) {
     const b = G.playerBids[i];
     if (!b || b === 'pass' || b.isMarks || TEAM[i] !== myTeam) continue;
     const t = b.trump;
@@ -1669,15 +1717,15 @@ function aiChooseBid(playerIdx) {
     return null;
   }
 
-  const minBid = highBid ? highBid.amount + 1 : 60;
-  if (minBid > 87) {
+  const minBid = highBid ? highBid.amount + 1 : (G.bidMin || 60);
+  if (minBid > (G.bidMax || 87)) {
     if (marksQualified) {
       return { isMarks: true, amount: 1, trump: chosenSuit };
     }
     return null;
   }
 
-  let bidAmount = 60;
+  let bidAmount = G.bidMin || 60;
   if (strength >= 80) bidAmount = 81;
   else if (strength >= 70) bidAmount = 76;
   else if (strength >= 55) bidAmount = 71;
@@ -1710,7 +1758,7 @@ function aiChooseBid(playerIdx) {
     });
     const probeHand = chosenCount >= 3 && topTrumps.length >= 1;
     const opponentHoldsBid  = G.highBid && TEAM[G.highBid.player] !== myTeam;
-    const teammateBidsAfter = [0,1,2,3,4,5].some(
+    const teammateBidsAfter = Array.from({length: G.numPlayers}, (_, i) => i).some(
       i => i !== playerIdx && TEAM[i] === myTeam && !G.bidActed[i]
     );
     if (probeHand && opponentHoldsBid && teammateBidsAfter) {
@@ -1720,6 +1768,60 @@ function aiChooseBid(playerIdx) {
   }
   if (bidAmount < minBid) return null;
   return { isMarks: false, amount: bidAmount, trump: chosenSuit };
+}
+
+function aiChooseBid42(playerIdx) {
+  const hand = G.hands[playerIdx];
+  const highBid = G.highBid;
+
+  // Find best trump suit by evaluating how many trumps + how strong
+  let bestSuit = 0, bestWeight = -1;
+  for (let t = 0; t <= 6; t++) {
+    const tiles = hand.filter(d => isTrump(d, t));
+    const w = tiles.reduce((s, d) => {
+      const r = trumpRank(d, t);
+      return s + (r === 20 ? 50 : r > 0 ? Math.pow(2, r) : 1);
+    }, 0);
+    if (w > bestWeight) { bestWeight = w; bestSuit = t; }
+  }
+
+  const trumpTiles = hand.filter(d => isTrump(d, bestSuit));
+  const trumpCount = trumpTiles.length;
+  const countPts = hand.reduce((s, d) => s + dominoPoints(d), 0);
+  const hasDouble = hand.some(d => d.h === bestSuit && d.l === bestSuit);
+
+  if (highBid && highBid.isMarks) {
+    const nextMark = highBid.amount + 1;
+    if (nextMark <= 7 && trumpCount >= 6 && hasDouble) return { isMarks: true, amount: nextMark, trump: bestSuit };
+    return null;
+  }
+
+  const minBid = highBid && !highBid.isMarks ? highBid.amount + 1 : G.bidMin;
+  const mustBid = !highBid && G.bidActed.every((a, i) => i === playerIdx || a);
+
+  if (minBid > G.bidMax) {
+    if (trumpCount >= 6 && hasDouble) return { isMarks: true, amount: 1, trump: bestSuit };
+    return null;
+  }
+
+  let bidAmount;
+  if (trumpCount >= 5 && hasDouble && countPts >= 20) bidAmount = 39;
+  else if (trumpCount >= 4 && hasDouble && countPts >= 15) bidAmount = 36;
+  else if (trumpCount >= 4 && countPts >= 10) bidAmount = 33;
+  else if (trumpCount >= 3 && hasDouble) bidAmount = 31;
+  else bidAmount = G.bidMin;
+
+  bidAmount = Math.min(bidAmount, G.bidMax);
+
+  if (bidAmount < minBid) {
+    if (mustBid) return { isMarks: false, amount: minBid, trump: bestSuit };
+    return null;
+  }
+
+  const isLastBidder = G.bidActed.every((acted, i) => i === playerIdx || acted);
+  if (isLastBidder && bidAmount > minBid) bidAmount = minBid;
+
+  return { isMarks: false, amount: bidAmount, trump: bestSuit };
 }
 
 // ─────────────────────────────────────────────
@@ -1749,7 +1851,7 @@ function aiLeadDomino(playerIdx) {
   const haveDoubleTrump = trumps.length > 0 && trumpRank(trumps[0], trump) === 20;
   if (opponentsBid && !haveDoubleTrump && nonTrumps.length > 0) {
     // Lead in a suit where a teammate showed strength during bidding
-    const teammates = [0, 1, 2, 3, 4, 5].filter(i => i !== playerIdx && TEAM[i] === myTeam);
+    const teammates = Array.from({length: G.numPlayers}, (_, i) => i).filter(i => i !== playerIdx && TEAM[i] === myTeam);
     const teammateSuit = teammates
       .map(i => G.playerBids?.[i])
       .filter(b => b && b !== 'pass' && typeof b.trump === 'number' && b.trump !== trump)
@@ -1782,7 +1884,7 @@ function aiLeadDomino(playerIdx) {
       const floatingHigherTrump = (() => {
         for (let h = 0; h <= 6; h++)
           for (let l = 0; l <= h; l++)
-            for (let s = 1; s <= 2; s++)
+            for (let s = 1; s <= G.numSets; s++)
               if (!seen.has(`${h},${l},${s}`) && isTrump({ h, l, s }, trump) && trumpRank({ h, l, s }, trump) > myTopRank)
                 return true;
         return false;
@@ -1862,7 +1964,7 @@ function aiFollowDomino(playerIdx) {
   // Uses only own hand + already-played tiles — no peeking at other hands.
   const partnerSecure = partnerWinning && (() => {
     const playedPlayers = new Set(trick.map(t => t.player));
-    const hasUnplayedOpponent = [0,1,2,3,4,5].some(p =>
+    const hasUnplayedOpponent = Array.from({length: G.numPlayers}, (_, i) => i).some(p =>
       !playedPlayers.has(p) && p !== playerIdx && TEAM[p] !== myTeam
     );
     if (!hasUnplayedOpponent) return true;
@@ -1878,7 +1980,7 @@ function aiFollowDomino(playerIdx) {
     // If any floating tile would win the trick, an opponent might hold it
     for (let h = 0; h <= 6; h++) {
       for (let l = 0; l <= h; l++) {
-        for (let s = 1; s <= 2; s++) {
+        for (let s = 1; s <= G.numSets; s++) {
           if (seen.has(`${h},${l},${s}`)) continue;
           const hypo = [...trick, { player: -1, domino: { h, l, s } }];
           if (trickWinner(hypo, trump) === hypo.length - 1) return false;
@@ -2005,13 +2107,13 @@ function startRound() {
   document.getElementById('bid-overlay').classList.remove('hidden');
   G.roundNum++;
   G.phase = 'deal';
-  G.hands = [[], [], [], [], [], []];
-  G.kitty = [];
+  G.hands = Array.from({length: G.numPlayers}, () => []);
+  G.kitty = G.gameType === '88' ? [] : undefined;
   G.currentBidder = G.bidStartIdx;
   G.highBid = null;
-  G.bidPassed = [false, false, false, false, false, false];
-  G.bidActed = [false, false, false, false, false, false];
-  G.playerBids = [null, null, null, null, null, null];
+  G.bidPassed = Array(G.numPlayers).fill(false);
+  G.bidActed = Array(G.numPlayers).fill(false);
+  G.playerBids = Array(G.numPlayers).fill(null);
   G.trump = null;
   G.currentTrick = [];
   G.completedTricks = [];
@@ -2068,19 +2170,23 @@ function advanceBid() {
     // AI bids (host runs this; clients never reach here)
     setTimeout(() => {
       const mustBid = !G.highBid && G.currentBidder === G.bidStartIdx;
-      const bid = aiChooseBid(G.currentBidder);
+      const bid = G.gameType === '42' ? aiChooseBid42(G.currentBidder) : aiChooseBid(G.currentBidder);
       if (!bid && !mustBid) {
         G.bidPassed[G.currentBidder] = true;
         G.bidActed[G.currentBidder] = true;
         G.playerBids[G.currentBidder] = 'pass';
         log(`${pName(G.currentBidder)} passes.`);
       } else {
-        const finalBid = bid || { isMarks: false, amount: 60, trump: 0 };
+        const finalBid = bid || { isMarks: false, amount: G.bidMin || 30, trump: 0 };
         G.highBid = { player: G.currentBidder, ...finalBid };
         G.bidActed[G.currentBidder] = true;
         G.playerBids[G.currentBidder] = finalBid;
         const bidStr = finalBid.isMarks ? `${finalBid.amount} mark(s)` : `${finalBid.amount}${finalBid.indication ? ' [IND]' : ''}`;
-        log(`${pName(G.currentBidder)} bids ${bidStr} in ${TRUMP_NAMES[finalBid.trump]}.`, 'highlight');
+        if (G.gameType === '42') {
+          log(`${pName(G.currentBidder)} bids ${bidStr}.`, 'highlight');
+        } else {
+          log(`${pName(G.currentBidder)} bids ${bidStr} in ${TRUMP_NAMES[finalBid.trump]}.`, 'highlight');
+        }
       }
       renderPlayerAreas();
       renderBidInfo();
@@ -2103,13 +2209,13 @@ function checkBidEnd() {
 }
 
 function nextBidder() {
-  G.currentBidder = (G.currentBidder + 1) % 6;
+  G.currentBidder = (G.currentBidder + 1) % G.numPlayers;
   advanceBid();
 }
 
 function finishBidding() {
   if (!G.highBid) {
-    G.highBid = { player: G.bidStartIdx, isMarks: false, amount: 60, trump: 0 };
+    G.highBid = { player: G.bidStartIdx, isMarks: false, amount: G.bidMin || 60, trump: 0 };
   }
   G.bidWinner = G.highBid.player;
   G.trump = G.highBid.trump;
@@ -2119,6 +2225,13 @@ function finishBidding() {
 
   showBidSummary();
   renderAll();
+
+  if (G.gameType === '42') {
+    // No kitty in 42 — go straight to play
+    broadcastState();
+    startPlay();
+    return;
+  }
 
   G.phase = 'kitty';
 
@@ -2194,7 +2307,7 @@ function startPlay() {
   G.trickLeader = G.bidWinner;
   G.currentTrick = [];
   G.lastRoundHands = G.hands.map(h => [...h]);
-  for (let i = 0; i < 6; i++) sortHand(G.hands[i], G.trump);
+  for (let i = 0; i < G.numPlayers; i++) sortHand(G.hands[i], G.trump);
   handSortPip = null;
   renderAll();
   advanceTrick();
@@ -2204,12 +2317,12 @@ function advanceTrick() {
   if (G.trickInProgress) return;
 
   const played = G.currentTrick.length;
-  if (played === 6) {
+  if (played === G.numPlayers) {
     resolveTrick();
     return;
   }
 
-  const playerIdx = (G.trickLeader + played) % 6;
+  const playerIdx = (G.trickLeader + played) % G.numPlayers;
   renderTrickArea();
   highlightCurrentPlayer(playerIdx);
   renderPhaseDisplay();
@@ -2299,7 +2412,7 @@ function playDomino(playerIdx, domino) {
   renderTricksWon();
   renderBidInfo();
   renderHostControls();
-  if (G.currentTrick.length === 6) {
+  if (G.currentTrick.length === G.numPlayers) {
     G.trickInProgress = true;
     broadcastState();
     const resolveId = ++G.trickResolveId;
@@ -2402,7 +2515,8 @@ function resolveTrick() {
   const winIdx = trickWinner(trick, G.trump);
   const winner = trick[winIdx].player;
   const winTeam = TEAM[winner];
-  const pts = 2 + trickPoints(trick);
+  const basePts = G.gameType === '42' ? 1 : 2;
+  const pts = basePts + trickPoints(trick);
   G.teamTrickPts[winTeam] += pts;
 
   G.completedTricks.push({ winner, plays: [...trick], pts });
@@ -2418,7 +2532,7 @@ function resolveTrick() {
   renderBidInfo();
   broadcastState();
 
-  if (G.completedTricks.length === 9) {
+  if (G.completedTricks.length === G.tricksPerRound) {
     setTimeout(endRound, 600);
     return;
   }
@@ -2434,7 +2548,7 @@ function checkEarlyEnd() {
   if (!hb) return false;
   const bidTeam = TEAM[hb.player];
   const distributed = G.teamTrickPts[0] + G.teamTrickPts[1];
-  const remaining = 88 - distributed;
+  const remaining = G.totalPoints - distributed;
 
   if (hb.isMarks) {
     if (G.completedTricks.some(t => TEAM[t.winner] !== bidTeam)) {
@@ -2483,7 +2597,7 @@ function endRound() {
 
   G.teamScores[0] += marksWon[0];
   G.teamScores[1] += marksWon[1];
-  G.bidStartIdx = (G.bidStartIdx + 1) % 6;
+  G.bidStartIdx = (G.bidStartIdx + 1) % G.numPlayers;
 
   G.lastMarksWon = marksWon;
   renderScoreBar();
@@ -2508,6 +2622,7 @@ function saveGameState() {
     savedAt: Date.now(),
     mode: NET.mode,
     roomCode: NET.mode === 'host' ? NET.roomCode : undefined,
+    gameType: G.gameType || '88',
     roundNum: G.roundNum,
     teamScores: [...G.teamScores],
     teamNames: [...G.teamNames],
@@ -2532,6 +2647,7 @@ function clearSavedGame() {
 function resumeFromSave() {
   const save = loadSavedGame();
   if (!save) return;
+  if (save.gameType) pendingGameType = save.gameType;
   if (save.mode === 'local') {
     hideMainMenu();
     NET.mode = 'local';
@@ -2556,8 +2672,8 @@ function renderPhaseDisplay() {
     const p = G.currentBidder;
     const possessive = p === NET.myIdx ? 'Your' : `${NET.playerNames[p] || `P${p}`}'s`;
     suffix = ` - ${possessive} Turn`;
-  } else if (G.phase === 'play' && !G.trickInProgress && G.currentTrick.length < 6) {
-    const p = (G.trickLeader + G.currentTrick.length) % 6;
+  } else if (G.phase === 'play' && !G.trickInProgress && G.currentTrick.length < G.numPlayers) {
+    const p = (G.trickLeader + G.currentTrick.length) % G.numPlayers;
     const possessive = p === NET.myIdx ? 'Your' : `${NET.playerNames[p] || `P${p}`}'s`;
     suffix = ` - ${possessive} Turn`;
   }
@@ -2666,9 +2782,10 @@ function renderScoreBar() {
   document.getElementById('round-info').textContent = `Round ${G.roundNum} · ${G.phase}`;
 
   // Update team labels to show which players are on each team
-  const teamAPlayers = [0,1,2,3,4,5].filter(p => TEAM[p] === 0)
+  const allPlayers = Array.from({length: G.numPlayers || 6}, (_, i) => i);
+  const teamAPlayers = allPlayers.filter(p => TEAM[p] === 0)
     .map(p => p === NET.myIdx ? 'You' : NET.playerNames[p] || `P${p}`);
-  const teamBPlayers = [0,1,2,3,4,5].filter(p => TEAM[p] === 1)
+  const teamBPlayers = allPlayers.filter(p => TEAM[p] === 1)
     .map(p => p === NET.myIdx ? 'You' : NET.playerNames[p] || `P${p}`);
   document.getElementById('team-a-players').textContent = `(${teamAPlayers.join(', ')})`;
   document.getElementById('team-b-players').textContent = `(${teamBPlayers.join(', ')})`;
@@ -2693,11 +2810,16 @@ function renderPlayerAreas() {
   table.querySelectorAll('.player-area').forEach(el => el.remove());
 
   // Render all players except NET.myIdx (shown at bottom via human-hand-area)
-  for (let p = 0; p <= 5; p++) {
+  for (let p = 0; p < G.numPlayers; p++) {
     const dIdx = dispIdx(p);
     if (dIdx === 0) continue; // local human, shown at bottom
 
-    const seatPos = window.innerWidth <= 1400 ? SEAT_POSITIONS_IPAD : SEAT_POSITIONS;
+    let seatPos;
+    if (G.gameType === '42') {
+      seatPos = window.innerWidth <= 1400 ? SEAT_POSITIONS_42_IPAD : SEAT_POSITIONS_42;
+    } else {
+      seatPos = window.innerWidth <= 1400 ? SEAT_POSITIONS_IPAD : SEAT_POSITIONS;
+    }
     const pos = seatPos[dIdx];
     const area = document.createElement('div');
     area.className = 'player-area';
@@ -2708,7 +2830,7 @@ function renderPlayerAreas() {
     const teamClass = TEAM[p] === 0 ? 'teamA' : 'teamB';
     const isActive = G.phase === 'bid' ? G.currentBidder === p :
                      G.phase === 'play' ? (G.currentTrick.length === 0 ? G.trickLeader === p :
-                       (G.trickLeader + G.currentTrick.length) % 6 === p) : false;
+                       (G.trickLeader + G.currentTrick.length) % G.numPlayers === p) : false;
 
     const label = document.createElement('div');
     label.className = `player-label ${teamClass}${isActive ? ' active' : ''}`;
@@ -2723,7 +2845,8 @@ function renderPlayerAreas() {
     area.appendChild(label);
 
     if (G.playerBids && (G.phase === 'bid' || (['kitty', 'play'].includes(G.phase) && p === G.bidWinner))) {
-      const bidText = formatBidLabel(G.playerBids[p]);
+      const showTrump = !(G.gameType === '42' && G.phase === 'bid');
+      const bidText = formatBidLabel(G.playerBids[p], showTrump);
       if (bidText) {
         const badge = document.createElement('div');
         badge.className = 'bid-badge';
@@ -2781,7 +2904,8 @@ function animateHumanPlay(srcRect, domino, onComplete) {
 
   const table     = document.getElementById('table');
   const tableRect = table.getBoundingClientRect();
-  const slots = window.innerWidth <= 900  ? TRICK_SLOT_POSITIONS_PHONE
+  const slots = G.gameType === '42' ? TRICK_SLOT_POSITIONS_42
+              : window.innerWidth <= 900  ? TRICK_SLOT_POSITIONS_PHONE
               : window.innerWidth <= 1400 ? TRICK_SLOT_POSITIONS_IPAD
               : TRICK_SLOT_POSITIONS;
   const pos   = slots[0]; // human is always display index 0
@@ -2823,7 +2947,8 @@ function renderTrickArea() {
   if (trickAnimating) return;
   document.querySelectorAll('.trick-domino-play').forEach(el => el.remove());
   const table = document.getElementById('table');
-  const slots = window.innerWidth <= 900  ? TRICK_SLOT_POSITIONS_PHONE
+  const slots = G.gameType === '42' ? TRICK_SLOT_POSITIONS_42
+              : window.innerWidth <= 900  ? TRICK_SLOT_POSITIONS_PHONE
               : window.innerWidth <= 1400 ? TRICK_SLOT_POSITIONS_IPAD
               : TRICK_SLOT_POSITIONS;
   const winTrickIdx = G.currentTrick.length > 0 ? trickWinner(G.currentTrick, G.trump) : -1;
@@ -2946,7 +3071,9 @@ function renderBidInfo() {
   } else {
     const bidStr = G.highBid.isMarks ? `${G.highBid.amount} mark(s)` : `${G.highBid.amount}${G.highBid.indication ? ' [IND]' : ''}`;
     const bidTeamClass = TEAM[G.highBid.player] === 0 ? 'teamA-label' : 'teamB-label';
-    el.innerHTML = `<span class="${bidTeamClass}">${bidStr} in ${TRUMP_NAMES[G.highBid.trump]} by Player ${G.highBid.player}</span>`;
+    const hide42Trump = G.gameType === '42' && G.phase === 'bid' && G.highBid.player !== NET.myIdx;
+    const trumpPart = hide42Trump ? '' : ` in ${TRUMP_NAMES[G.highBid.trump]}`;
+    el.innerHTML = `<span class="${bidTeamClass}">${bidStr}${trumpPart} by ${pName(G.highBid.player)}</span>`;
   }
   document.getElementById('trump-display').style.display = 'none';
 
@@ -2971,7 +3098,7 @@ function renderBidInfo() {
       G.completedTricks.flatMap(t => t.plays.map(p => dominoId(p.domino)))
         .concat(G.currentTrick.map(p => dominoId(p.domino)))
     );
-    const allTrumps = createDeck().filter(d => isTrump(d, G.trump));
+    const allTrumps = (G.gameType === '42' ? createDeck42() : createDeck()).filter(d => isTrump(d, G.trump));
     const unplayedTrumps = allTrumps.filter(d => !playedTrumpIds.has(dominoId(d)));
     const unplayed = unplayedTrumps.length;
     unplayedTrumps.sort((a, b) => trumpRank(b, G.trump) - trumpRank(a, G.trump));
@@ -2987,7 +3114,7 @@ function renderBidInfo() {
 function renderScorePanel() {
   document.getElementById('scoreA-pts').textContent = G.teamTrickPts[0];
   document.getElementById('scoreB-pts').textContent = G.teamTrickPts[1];
-  document.getElementById('tricks-left').textContent = 9 - G.completedTricks.length;
+  document.getElementById('tricks-left').textContent = (G.tricksPerRound || 9) - G.completedTricks.length;
 }
 
 // ─────────────────────────────────────────────
@@ -3040,8 +3167,12 @@ function showBidPanel() {
   document.getElementById('bid-indication').checked = false;
 
   const hb = G.highBid;
-  const minNumeric = hb && !hb.isMarks ? hb.amount + 1 : 60;
+  const minNumeric = hb && !hb.isMarks ? hb.amount + 1 : (G.bidMin || 60);
   const hasHighMark = hb && hb.isMarks;
+
+  // Hide Indication checkbox for 42
+  const indLabel = document.getElementById('bid-indication')?.closest('label');
+  if (indLabel) indLabel.style.display = G.gameType === '42' ? 'none' : '';
 
   if (hostBidFor !== null) {
     const forName = NET.playerNames[hostBidFor] || `P${hostBidFor}`;
@@ -3089,23 +3220,24 @@ function showBidPanel() {
   });
 
   const amountInput = document.getElementById('bid-amount');
-  amountInput.value = Math.max(minNumeric, 60);
+  amountInput.value = Math.max(minNumeric, G.bidMin || 60);
   amountInput.min = minNumeric;
+  amountInput.max = G.bidMax || 87;
 
   document.getElementById('bid-dec').onclick = () => {
     amountInput.value = Math.max(minNumeric, parseInt(amountInput.value) - 1);
   };
   document.getElementById('bid-inc').onclick = () => {
-    amountInput.value = Math.min(87, parseInt(amountInput.value) + 1);
+    amountInput.value = Math.min(G.bidMax || 87, parseInt(amountInput.value) + 1);
   };
 
   document.getElementById('bid-submit').onclick = () => {
     const forIdx = hostBidFor ?? NET.myIdx;
     const trump = bidSelectedTrump;
     const amount = parseInt(amountInput.value);
-    const indication = document.getElementById('bid-indication')?.checked ?? false;
-    if (isNaN(amount) || amount < minNumeric || amount > 87) {
-      alert(`Bid must be between ${minNumeric} and 87.`); return;
+    const indication = G.gameType === '88' ? (document.getElementById('bid-indication')?.checked ?? false) : false;
+    if (isNaN(amount) || amount < minNumeric || amount > (G.bidMax || 87)) {
+      alert(`Bid must be between ${minNumeric} and ${G.bidMax || 87}.`); return;
     }
 
     if (NET.mode === 'client') {
@@ -3118,7 +3250,11 @@ function showBidPanel() {
     G.highBid = { player: forIdx, isMarks: false, amount, trump, indication };
     G.bidActed[forIdx] = true;
     G.playerBids[forIdx] = { isMarks: false, amount, trump, indication };
-    log(`${pName(forIdx)} bids ${amount} in ${TRUMP_NAMES[trump]}${indication ? ' (Indication)' : ''}.`, 'highlight');
+    if (G.gameType === '42') {
+      log(`${pName(forIdx)} bids ${amount}.`, 'highlight');
+    } else {
+      log(`${pName(forIdx)} bids ${amount} in ${TRUMP_NAMES[trump]}${indication ? ' (Indication)' : ''}.`, 'highlight');
+    }
     hostBidFor = null;
     hideBidPanel();
     renderPlayerAreas();
@@ -3149,7 +3285,11 @@ function showBidPanel() {
       G.highBid = { player: forIdx, isMarks: true, amount: m, trump };
       G.bidActed[forIdx] = true;
       G.playerBids[forIdx] = { isMarks: true, amount: m, trump };
-      log(`${pName(forIdx)} bids ${m} mark(s) in ${TRUMP_NAMES[trump]}.`, 'highlight');
+      if (G.gameType === '42') {
+        log(`${pName(forIdx)} bids ${m} mark(s).`, 'highlight');
+      } else {
+        log(`${pName(forIdx)} bids ${m} mark(s) in ${TRUMP_NAMES[trump]}.`, 'highlight');
+      }
       hostBidFor = null;
       hideBidPanel();
       renderPlayerAreas();
@@ -3163,7 +3303,7 @@ function showBidPanel() {
     const forIdx = hostBidFor ?? NET.myIdx;
     if (!G.highBid && G.bidStartIdx === forIdx) {
       const others = G.bidPassed.filter((p, i) => i !== forIdx && !p).length;
-      if (others === 0) { alert('You must bid at least 60 — no one else bid!'); return; }
+      if (others === 0) { alert(`You must bid at least ${G.bidMin || 60} — no one else bid!`); return; }
     }
 
     if (NET.mode === 'client') {
@@ -3231,8 +3371,8 @@ function updateLiveBidList(winnerIdx = null) {
   const row = document.createElement('div');
   row.className = 'bid-summary-final';
 
-  for (let offset = 0; offset < 6; offset++) {
-    const i = (G.bidStartIdx + offset) % 6;
+  for (let offset = 0; offset < G.numPlayers; offset++) {
+    const i = (G.bidStartIdx + offset) % G.numPlayers;
     const bid = G.playerBids ? G.playerBids[i] : null;
     if (bid === null) continue;
 
@@ -3444,7 +3584,7 @@ function showHandsInResult() {
   const hands = G.lastRoundHands;
   if (!hands) return;
 
-  const bidOrder = Array.from({length: 6}, (_, offset) => (G.bidStartIdx + offset) % 6);
+  const bidOrder = Array.from({length: G.numPlayers}, (_, offset) => (G.bidStartIdx + offset) % G.numPlayers);
   for (const i of bidOrder) {
     const teamLabel = TEAM[i] === 0 ? 'A' : 'B';
     const teamColor = TEAM[i] === 0 ? 'var(--teamA)' : 'var(--teamB)';
@@ -3667,9 +3807,9 @@ function hostRedoBid(playerIdx) {
   if (!confirm(`Allow ${displayName} to re-bid?\n\nTheir bid and all bids placed after theirs will be cleared.`)) return;
 
   // Clear playerIdx's bid and all players who bid after them in rotation order
-  const getPos = (idx) => (idx - G.bidStartIdx + 6) % 6;
+  const getPos = (idx) => (idx - G.bidStartIdx + G.numPlayers) % G.numPlayers;
   const playerPos = getPos(playerIdx);
-  for (let p = 0; p < 6; p++) {
+  for (let p = 0; p < G.numPlayers; p++) {
     if (getPos(p) >= playerPos) {
       G.bidActed[p] = false;
       G.bidPassed[p] = false;
@@ -3708,9 +3848,9 @@ function hostRestartBidding() {
   G.currentBidder = G.bidStartIdx;
   G.highBid = null;
   G.bidWinner = null;
-  G.bidActed = [false, false, false, false, false, false];
-  G.bidPassed = [false, false, false, false, false, false];
-  G.playerBids = [null, null, null, null, null, null];
+  G.bidActed = Array(G.numPlayers).fill(false);
+  G.bidPassed = Array(G.numPlayers).fill(false);
+  G.playerBids = Array(G.numPlayers).fill(null);
   G.trump = null;
   G.awaitingPlayer = null;
   G.phase = 'bid';
@@ -3758,7 +3898,7 @@ function hostRestartRound() {
   if (G.phase === 'score' && G.lastMarksWon) {
     G.teamScores[0] -= G.lastMarksWon[0];
     G.teamScores[1] -= G.lastMarksWon[1];
-    G.bidStartIdx = ((G.bidStartIdx - 1) + 6) % 6;
+    G.bidStartIdx = ((G.bidStartIdx - 1) + G.numPlayers) % G.numPlayers;
   }
 
   G.roundNum--;
@@ -3794,7 +3934,7 @@ function sendToHost(msg) {
 }
 
 function assignNextSeat() {
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i < NET.playerTypes.length; i++) {
     if (NET.playerTypes[i] === 'ai') return i;
   }
   return -1; // full
@@ -3908,12 +4048,12 @@ function handleHostMessage(data) {
         sortHandByNumber(G.hands[NET.myIdx], handSortPip);
       }
       renderAll();
-      // Trigger trick-end animation when host signals all 6 tiles are played
-      if (G.phase === 'play' && G.currentTrick.length === 6 && G.trickInProgress && !trickAnimating && !clientTrickAnimPending) {
+      // Trigger trick-end animation when host signals all tiles are played
+      if (G.phase === 'play' && G.currentTrick.length === G.numPlayers && G.trickInProgress && !trickAnimating && !clientTrickAnimPending) {
         clientTrickAnimPending = true;
         setTimeout(() => {
           clientTrickAnimPending = false;
-          if (G.currentTrick.length === 6) animateTrickExit(0);
+          if (G.currentTrick.length === G.numPlayers) animateTrickExit(0);
         }, TRICK_PAUSE);
       }
       // Show UI prompts if it's this client's turn
@@ -4000,6 +4140,25 @@ function showMainMenu() {
   } else {
     resumeBtn.style.display = 'none';
   }
+  updateMenuGameType(pendingGameType);
+}
+
+function updateMenuGameType(gt) {
+  pendingGameType = gt;
+  const btn42 = document.getElementById('menu-gt-42');
+  const btn88 = document.getElementById('menu-gt-88');
+  const subtitle = document.getElementById('menu-game-subtitle');
+  const playBtns = document.getElementById('menu-play-buttons');
+  if (gt === '42') {
+    btn42.className = 'btn btn-gold';
+    btn88.className = 'btn btn-muted';
+    subtitle.textContent = '4 players · 1 deck · trump hidden until bid ends';
+  } else {
+    btn42.className = 'btn btn-muted';
+    btn88.className = 'btn btn-gold';
+    subtitle.textContent = '6 players · 2 decks · kitty';
+  }
+  playBtns.style.display = 'flex';
 }
 
 function hideMainMenu() {
@@ -4101,7 +4260,7 @@ function renderVideoGrid() {
 
   const tableRect = table.getBoundingClientRect();
   const activeSeats = new Set();
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < NET.playerTypes.length; i++) {
     if (NET.remoteStreams[i] != null) activeSeats.add(i);
   }
 
@@ -4319,8 +4478,13 @@ function quitToMenu() {
   NET.connections = {};
   NET.hostConn = null;
   NET.roomCode = '';
-  NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-  NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  if (pendingGameType === '42') {
+    NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
+    NET.playerNames = ['', 'P1', 'P2', 'P3'];
+  } else {
+    NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
+    NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  }
   NET.myName = '';
   NET.gameStarted = false;
   NET.savedState = null;
@@ -4490,7 +4654,7 @@ function renderLobby() {
     const seatList = document.createElement('div');
     seatList.className = 'seat-list';
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < NET.playerTypes.length; i++) {
       const row = document.createElement('div');
       row.className = `seat-row${i === 0 ? ' mine' : ''}`;
       row.dataset.seatIdx = i;
@@ -4530,7 +4694,7 @@ function renderLobby() {
       }
 
       const num = document.createElement('div');
-      num.className = `seat-num ${TEAM[i] === 0 ? 'teamA' : 'teamB'}`;
+      num.className = `seat-num ${i % 2 === 0 ? 'teamA' : 'teamB'}`;
       num.textContent = `Seat ${i}`;
 
       const status = document.createElement('div');
@@ -4580,7 +4744,7 @@ function renderLobby() {
 
       const teamTag = document.createElement('div');
       teamTag.style.cssText = 'font-size:16px;color:var(--muted);flex-shrink:0';
-      teamTag.textContent = `Team ${TEAM[i] === 0 ? 'A' : 'B'}`;
+      teamTag.textContent = `Team ${i % 2 === 0 ? 'A' : 'B'}`;
       row.appendChild(teamTag);
 
       seatList.appendChild(row);
@@ -4602,8 +4766,13 @@ function renderLobby() {
       NET.mode = 'local';
       NET.myIdx = 0;
       NET.connections = {};
-      NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-      NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+      if (pendingGameType === '42') {
+        NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
+        NET.playerNames = ['', 'P1', 'P2', 'P3'];
+      } else {
+        NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
+        NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+      }
       NET.roomCode = '';
       NET.peer = null;
       NET.gameStarted = false;
@@ -4681,8 +4850,13 @@ function renderLobby() {
       NET.hostConn = null;
       NET.peer = null;
       NET.roomCode = '';
-      NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-      NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+      if (pendingGameType === '42') {
+        NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
+        NET.playerNames = ['', 'P1', 'P2', 'P3'];
+      } else {
+        NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
+        NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+      }
       hideLobby();
       showMainMenu();
     };
@@ -4837,8 +5011,13 @@ function renderReconnectPrompt(code, errMsg, attempt = 0) {
   joinOtherBtn.onclick = () => { stopRetrying(); renderJoinForm(); };
   offlineBtn.onclick   = () => {
     stopRetrying();
-    NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-    NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    if (pendingGameType === '42') {
+      NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
+      NET.playerNames = ['', 'P1', 'P2', 'P3'];
+    } else {
+      NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
+      NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    }
     NET.roomCode = '';
     hideLobby();
     showMainMenu();
@@ -4893,8 +5072,13 @@ function createRoom() {
   localStorage.setItem('ee88-host-code', code);
   NET.mode = 'host';
   NET.myIdx = 0;
-  NET.playerTypes = ['human', 'open', 'open', 'open', 'open', 'open'];
-  NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  if (pendingGameType === '42') {
+    NET.playerTypes = ['human', 'open', 'open', 'open'];
+    NET.playerNames = ['', 'P1', 'P2', 'P3'];
+  } else {
+    NET.playerTypes = ['human', 'open', 'open', 'open', 'open', 'open'];
+    NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  }
   if (NET.savedState) {
     NET.playerNames = [...NET.savedState.playerNames];
     NET.playerTypes = NET.savedState.playerTypes.map((t, i) =>
@@ -5179,12 +5363,20 @@ document.getElementById('quit-btn').addEventListener('click', () => {
 document.getElementById('host-restart-btn').addEventListener('click', hostRestartRound);
 document.getElementById('host-restart-bid-btn').addEventListener('click', hostRestartBidding);
 
+document.getElementById('menu-gt-42').addEventListener('click', () => updateMenuGameType('42'));
+document.getElementById('menu-gt-88').addEventListener('click', () => updateMenuGameType('88'));
+
 document.getElementById('menu-singleplayer').addEventListener('click', () => {
   hideMainMenu();
   NET.mode = 'local';
   NET.myIdx = 0;
-  NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-  NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  if (pendingGameType === '42') {
+    NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
+    NET.playerNames = ['', 'P1', 'P2', 'P3'];
+  } else {
+    NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
+    NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  }
   initGame();
 });
 
@@ -5195,6 +5387,13 @@ document.getElementById('menu-resume').addEventListener('click', () => {
 
 document.getElementById('menu-host').addEventListener('click', () => {
   hideMainMenu();
+  if (pendingGameType === '42') {
+    NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
+    NET.playerNames = ['', 'P1', 'P2', 'P3'];
+  } else {
+    NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
+    NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+  }
   document.getElementById('lobby-overlay').classList.remove('hidden');
   createRoom();
 });
