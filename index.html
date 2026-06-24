@@ -316,6 +316,25 @@
     .domino.kitty-size .divider { height: 1px; margin: 0 4px; }
     #kitty-in-phase { display: flex; gap: 6px; }
 
+    #kitty-wait-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.55);
+      border-radius: 12px;
+      padding: 18px 28px;
+      text-align: center;
+      pointer-events: none;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #kitty-wait-overlay .kwo-winner { font-size: 18px; font-weight: 700; color: #fff; }
+    #kitty-wait-overlay .kwo-bid    { font-size: 15px; color: #ffd580; }
+    #kitty-wait-overlay .kwo-status { font-size: 13px; color: var(--muted); }
+
     /* ── HUMAN HAND ── */
     #human-hint { font-size: 32px; }
 
@@ -1103,6 +1122,7 @@
   <div id="table">
     <!-- player areas positioned by JS -->
     <div id="trick-area"></div>
+    <div id="kitty-wait-overlay" style="display:none"></div>
     <div id="human-table-info">
       <div id="human-name-label" class="player-label teamA"></div>
       <div id="human-bid-badge" class="bid-badge" style="display:none"></div>
@@ -1258,7 +1278,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.8';
+const VERSION = 'v1.9';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -2548,6 +2568,7 @@ function renderAll() {
   renderScoreBar();
   renderPlayerAreas();
   renderTrickArea();
+  renderKittyWaitOverlay();
   renderHumanHand();
   renderScorePanel();
   renderBidInfo();
@@ -2556,6 +2577,25 @@ function renderAll() {
   renderHostControls();
   renderLog();
   document.getElementById('round-info').textContent = `Round ${G.roundNum} · ${G.phase}`;
+}
+
+function renderKittyWaitOverlay() {
+  const el = document.getElementById('kitty-wait-overlay');
+  const show = G.phase === 'kitty' && G.bidWinner !== NET.myIdx;
+  if (!show) { el.style.display = 'none'; return; }
+
+  const winnerName = NET.playerNames[G.bidWinner] || `P${G.bidWinner}`;
+  const bid = G.highBid;
+  const bidStr = bid
+    ? (bid.isMarks ? `${bid.amount} mark(s) in ${TRUMP_NAMES[bid.trump]}`
+                   : `${bid.amount} in ${bid.trump === FOLLOW_ME ? 'Follow Me' : TRUMP_NAMES[bid.trump]}${bid.indication ? ' (Indication)' : ''}`)
+    : '';
+
+  el.innerHTML = `
+    <div class="kwo-winner">${winnerName} won the bid</div>
+    ${bidStr ? `<div class="kwo-bid">${bidStr}</div>` : ''}
+    <div class="kwo-status">Picking up the kitty…</div>`;
+  el.style.display = '';
 }
 
 function renderTricksWon() {
