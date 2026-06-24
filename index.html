@@ -1258,7 +1258,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.7';
+const VERSION = 'v1.8';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -4387,6 +4387,19 @@ function renderLobby() {
         prompt('Share this room code:', NET.roomCode);
       });
     };
+    const copyLinkBtn = document.createElement('button');
+    copyLinkBtn.className = 'btn btn-muted';
+    copyLinkBtn.style.fontSize = '11px';
+    copyLinkBtn.textContent = 'Copy Invite Link';
+    copyLinkBtn.onclick = () => {
+      const url = window.location.origin + window.location.pathname + '?code=' + NET.roomCode;
+      navigator.clipboard.writeText(url).then(() => {
+        copyLinkBtn.textContent = 'Copied!';
+        setTimeout(() => { copyLinkBtn.textContent = 'Copy Invite Link'; }, 1500);
+      }).catch(() => {
+        prompt('Share this invite link:', url);
+      });
+    };
     const newCodeBtn = document.createElement('button');
     newCodeBtn.className = 'btn btn-muted';
     newCodeBtn.style.fontSize = '11px';
@@ -4400,6 +4413,7 @@ function renderLobby() {
     };
     codeBox.appendChild(codeVal);
     codeBox.appendChild(copyBtn);
+    codeBox.appendChild(copyLinkBtn);
     codeBox.appendChild(newCodeBtn);
     content.appendChild(codeBox);
 
@@ -4654,7 +4668,9 @@ function renderJoinForm() {
   codeInput.maxLength = 6;
   codeInput.placeholder = 'XXXXXX';
   codeInput.autocomplete = 'off';
-  codeInput.value = localStorage.getItem('ee88-last-code') || '';
+  const urlCode = new URLSearchParams(window.location.search).get('code');
+  codeInput.value = (urlCode ? urlCode.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6) : null)
+                 || localStorage.getItem('ee88-last-code') || '';
   codeInput.oninput = () => { codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g,''); };
 
   const connectBtn = document.createElement('button');
