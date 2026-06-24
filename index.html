@@ -123,6 +123,17 @@
       height: auto;
       aspect-ratio: 25 / 48;
     }
+    /* pips scale with the tile here since its rendered size varies with
+       how many dominoes share the row (4 for 42, 6 for 88) */
+    .trick-dominoes-row .domino.mini .pip-grid {
+      width: 68%;
+      height: auto;
+      aspect-ratio: 1;
+    }
+    .trick-dominoes-row .domino.mini .pip {
+      width: 23%;
+      height: 23%;
+    }
     .trick-pts-badge {
       font-size: 16px;
       color: var(--muted);
@@ -1293,7 +1304,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.13';
+const VERSION = 'v1.14';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
