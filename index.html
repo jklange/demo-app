@@ -1305,7 +1305,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.15';
+const VERSION = 'v1.16';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -1333,6 +1333,27 @@ const TEAM_NAME_PAIRS = [
 function pickTeamNames() {
   const pair = TEAM_NAME_PAIRS[Math.floor(Math.random() * TEAM_NAME_PAIRS.length)];
   return Math.random() < 0.5 ? [...pair] : [pair[1], pair[0]];
+}
+
+const AI_NAME_POOL = [
+  'Slim', 'Tex', 'Bandit', 'Ace', 'Cactus', 'Duke', 'Hoss', 'Rusty', 'Cheyenne', 'Maverick',
+  'Wrangler', 'Dusty', 'Sarge', 'Tumbleweed', 'Outlaw', 'Marshal', 'Buckshot', 'Coyote', 'Drifter', 'Lasso',
+];
+
+function randomAiNames(count) {
+  const pool = [...AI_NAME_POOL];
+  const picked = [];
+  for (let i = 0; i < count; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    picked.push(pool.splice(idx, 1)[0]);
+  }
+  return picked;
+}
+
+// Default playerNames array (seat 0 is the local human, left blank) with
+// randomized AI names instead of generic "P1"/"P2" labels.
+function defaultPlayerNames(numPlayers) {
+  return ['', ...randomAiNames(numPlayers - 1)];
 }
 
 // pip layouts: array of 9 booleans for 3×3 grid (top-left→bottom-right)
@@ -1429,7 +1450,7 @@ let NET = {
   roomCode: '',
   // 'human' = local human, 'ai' = AI, 'remote' = remote human, 'open' = waiting for human
   playerTypes: pendingGameType === '42' ? ['human', 'ai', 'ai', 'ai'] : ['human', 'ai', 'ai', 'ai', 'ai', 'ai'],
-  playerNames: pendingGameType === '42' ? ['', 'P1', 'P2', 'P3'] : ['', 'P1', 'P2', 'P3', 'P4', 'P5'],
+  playerNames: defaultPlayerNames(pendingGameType === '42' ? 4 : 6),
   myName: '',         // local player's chosen display name (clients)
   gameStarted: false,
   dropTimers: {},        // seatIdx → timer (unused, kept for cleanup compatibility)
@@ -4488,10 +4509,10 @@ function quitToMenu() {
   NET.roomCode = '';
   if (pendingGameType === '42') {
     NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
-    NET.playerNames = ['', 'P1', 'P2', 'P3'];
+    NET.playerNames = defaultPlayerNames(4);
   } else {
     NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-    NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    NET.playerNames = defaultPlayerNames(6);
   }
   NET.myName = '';
   NET.gameStarted = false;
@@ -4776,10 +4797,10 @@ function renderLobby() {
       NET.connections = {};
       if (pendingGameType === '42') {
         NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
-        NET.playerNames = ['', 'P1', 'P2', 'P3'];
+        NET.playerNames = defaultPlayerNames(4);
       } else {
         NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-        NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+        NET.playerNames = defaultPlayerNames(6);
       }
       NET.roomCode = '';
       NET.peer = null;
@@ -4860,10 +4881,10 @@ function renderLobby() {
       NET.roomCode = '';
       if (pendingGameType === '42') {
         NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
-        NET.playerNames = ['', 'P1', 'P2', 'P3'];
+        NET.playerNames = defaultPlayerNames(4);
       } else {
         NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-        NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+        NET.playerNames = defaultPlayerNames(6);
       }
       hideLobby();
       showMainMenu();
@@ -5021,10 +5042,10 @@ function renderReconnectPrompt(code, errMsg, attempt = 0) {
     stopRetrying();
     if (pendingGameType === '42') {
       NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
-      NET.playerNames = ['', 'P1', 'P2', 'P3'];
+      NET.playerNames = defaultPlayerNames(4);
     } else {
       NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-      NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+      NET.playerNames = defaultPlayerNames(6);
     }
     NET.roomCode = '';
     hideLobby();
@@ -5082,10 +5103,10 @@ function createRoom() {
   NET.myIdx = 0;
   if (pendingGameType === '42') {
     NET.playerTypes = ['human', 'open', 'open', 'open'];
-    NET.playerNames = ['', 'P1', 'P2', 'P3'];
+    NET.playerNames = defaultPlayerNames(4);
   } else {
     NET.playerTypes = ['human', 'open', 'open', 'open', 'open', 'open'];
-    NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    NET.playerNames = defaultPlayerNames(6);
   }
   if (NET.savedState) {
     NET.playerNames = [...NET.savedState.playerNames];
@@ -5380,10 +5401,10 @@ document.getElementById('menu-singleplayer').addEventListener('click', () => {
   NET.myIdx = 0;
   if (pendingGameType === '42') {
     NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
-    NET.playerNames = ['', 'P1', 'P2', 'P3'];
+    NET.playerNames = defaultPlayerNames(4);
   } else {
     NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-    NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    NET.playerNames = defaultPlayerNames(6);
   }
   initGame();
 });
@@ -5397,10 +5418,10 @@ document.getElementById('menu-host').addEventListener('click', () => {
   hideMainMenu();
   if (pendingGameType === '42') {
     NET.playerTypes = ['human', 'ai', 'ai', 'ai'];
-    NET.playerNames = ['', 'P1', 'P2', 'P3'];
+    NET.playerNames = defaultPlayerNames(4);
   } else {
     NET.playerTypes = ['human', 'ai', 'ai', 'ai', 'ai', 'ai'];
-    NET.playerNames = ['', 'P1', 'P2', 'P3', 'P4', 'P5'];
+    NET.playerNames = defaultPlayerNames(6);
   }
   document.getElementById('lobby-overlay').classList.remove('hidden');
   createRoom();
