@@ -1293,7 +1293,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.11';
+const VERSION = 'v1.12';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -3559,10 +3559,6 @@ function showResultPanel(marksWon) {
   table.innerHTML = `
     <tr><td>${tA} points</td><td>${G.teamTrickPts[0]}</td></tr>
     <tr><td>${tB} points</td><td>${G.teamTrickPts[1]}</td></tr>
-    <tr><td>${tA} marks won</td><td>${marksWon[0]}</td></tr>
-    <tr><td>${tB} marks won</td><td>${marksWon[1]}</td></tr>
-    <tr><td>${tA} total marks</td><td>${G.teamScores[0]}</td></tr>
-    <tr><td>${tB} total marks</td><td>${G.teamScores[1]}</td></tr>
   `;
 
   const showHandsBtn = document.getElementById('result-show-hands');
