@@ -790,6 +790,27 @@
       border-bottom: 1px solid var(--border);
       padding-bottom: 4px;
     }
+    /* Force column layout and wrapping rows — overrides both base and media-query rules */
+    #bid-in-hand #bid-bar {
+      flex-direction: column;
+      padding: 0;
+      overflow: visible;
+      min-height: unset;
+      align-items: stretch;
+    }
+    #bid-in-hand #bid-row-trump,
+    #bid-in-hand #bid-row-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 6px 10px;
+      overflow: visible;
+      min-height: unset;
+    }
+    #bid-in-hand #bid-row-trump { border-bottom: 1px solid var(--border); }
+    /* Replace vertical separators with gap-based spacing */
+    #bid-in-hand .bid-bar-sep { display: none; }
 
     /* round result */
     #result-winner {
@@ -1338,7 +1359,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.27';
+const VERSION = 'v1.28';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
