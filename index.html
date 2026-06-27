@@ -1311,7 +1311,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.19';
+const VERSION = 'v1.20';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -2914,7 +2914,7 @@ function renderPlayerAreas() {
   humanLabel.textContent = NET.playerNames[NET.myIdx] || 'You';
   updateTurnDot(NET.myIdx, isHumanActive);
   document.getElementById('human-turn-dot').style.display = (isHumanActive && turnDotVisible.has(NET.myIdx)) ? '' : 'none';
-  document.getElementById('human-hand-area').classList.toggle('pulsing', G.phase === 'bid' && isHumanActive && turnDotVisible.has(NET.myIdx));
+  document.getElementById('human-hand-area').classList.toggle('pulsing', isHumanActive && turnDotVisible.has(NET.myIdx));
 
   // Local human hint + bid badge
   document.getElementById('human-hint').textContent =
