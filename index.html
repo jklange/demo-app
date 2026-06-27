@@ -765,26 +765,21 @@
     }
 
     /* ── KITTY EXCHANGE (in-hand UI) ── */
-    #kitty-exchange-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: nowrap;
-      justify-content: center;
-    }
-    #kitty-exchange-row .kitty-row-label {
+    .kitty-inline-label {
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: var(--muted);
-      margin-right: 4px;
       flex-shrink: 0;
+      align-self: center;
+      margin-right: 2px;
     }
-    #kitty-exchange-sep {
-      width: 100%;
-      height: 1px;
+    .kitty-vsep {
+      width: 2px;
+      align-self: stretch;
       background: var(--border);
       flex-shrink: 0;
+      margin: 0 8px;
     }
     #kitty-confirm-btn { margin-top: 2px; }
 
@@ -1335,7 +1330,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.22';
+const VERSION = 'v1.23';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -3067,6 +3062,35 @@ function renderHumanHand() {
   }
 
   if (G.phase === 'kitty' && G.bidWinner === NET.myIdx) {
+    // Kitty tiles on the left
+    const kittyLbl = document.createElement('span');
+    kittyLbl.className = 'kitty-inline-label';
+    kittyLbl.textContent = 'Kitty';
+    container.appendChild(kittyLbl);
+
+    G.kitty.forEach((d, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'kitty-domino-wrap';
+      const domEl = buildDomino(d, true, false, isTrump(d, G.trump));
+      domEl.classList.add('kitty-size');
+      domEl.addEventListener('click', () => toggleKittyDomino(i));
+      if (kittyState.kittySelected.includes(i)) {
+        domEl.classList.add('selected');
+        const badge = document.createElement('div');
+        badge.className = 'swap-badge';
+        badge.textContent = '✓';
+        wrap.appendChild(badge);
+      }
+      wrap.appendChild(domEl);
+      container.appendChild(wrap);
+    });
+
+    // Vertical separator
+    const vsep = document.createElement('div');
+    vsep.className = 'kitty-vsep';
+    container.appendChild(vsep);
+
+    // Hand tiles on the right
     myHand.forEach((d, i) => {
       const wrap = document.createElement('div');
       wrap.className = 'kitty-domino-wrap';
@@ -3564,25 +3588,12 @@ function confirmKittySwap() {
 }
 
 function showKittyPanel() {
-  if (document.getElementById('kitty-exchange-row')) return;
+  if (document.getElementById('kitty-confirm-btn')) return;
   kittyState = { kittySelected: [], handSelected: [] };
 
   document.getElementById('kitty-bar').style.display = 'none';
 
   const area = document.getElementById('human-hand-area');
-
-  const row = document.createElement('div');
-  row.id = 'kitty-exchange-row';
-  const lbl = document.createElement('span');
-  lbl.className = 'kitty-row-label';
-  lbl.textContent = 'Kitty';
-  row.appendChild(lbl);
-  area.insertBefore(row, document.getElementById('human-hand'));
-
-  const sep = document.createElement('div');
-  sep.id = 'kitty-exchange-sep';
-  area.insertBefore(sep, document.getElementById('human-hand'));
-
   const btn = document.createElement('button');
   btn.id = 'kitty-confirm-btn';
   btn.className = 'btn btn-gold';
@@ -3594,29 +3605,6 @@ function showKittyPanel() {
 }
 
 function renderKittyPanel() {
-  const row = document.getElementById('kitty-exchange-row');
-  if (!row) return;
-  const lbl = row.querySelector('.kitty-row-label');
-  row.innerHTML = '';
-  row.appendChild(lbl);
-
-  G.kitty.forEach((d, i) => {
-    const wrap = document.createElement('div');
-    wrap.className = 'kitty-domino-wrap';
-    const domEl = buildDomino(d, true, false, isTrump(d, G.trump));
-    domEl.classList.add('kitty-size');
-    domEl.addEventListener('click', () => toggleKittyDomino(i));
-    if (kittyState.kittySelected.includes(i)) {
-      domEl.classList.add('selected');
-      const badge = document.createElement('div');
-      badge.className = 'swap-badge';
-      badge.textContent = '✓';
-      wrap.appendChild(badge);
-    }
-    wrap.appendChild(domEl);
-    row.appendChild(wrap);
-  });
-
   renderHumanHand();
 }
 
