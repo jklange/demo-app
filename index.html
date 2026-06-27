@@ -1338,7 +1338,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.26';
+const VERSION = 'v1.27';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -2947,6 +2947,7 @@ function renderPlayerAreas() {
   document.getElementById('human-hint').textContent =
     G.phase === 'kitty' && G.bidWinner === NET.myIdx
       ? 'Kitty — click tiles below to swap (up to 2 pairs), then Confirm & Lead'
+      : G.phase === 'bid' && G.awaitingPlayer === NET.myIdx ? 'Your turn to bid!'
       : G.awaitingPlayer === NET.myIdx ? 'Your turn — click a highlighted domino'
       : G.phase === 'play' && preMove ? 'Pre-selected — will auto-play when your turn'
       : G.phase === 'play' && G.currentTrick.length > 0 ? 'Waiting… click any domino to pre-select'
