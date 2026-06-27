@@ -707,6 +707,7 @@
       font-size: 13px;
     }
     .mark-bid-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .mark-bid-btn.selected { border-color: var(--gold); background: rgba(255,215,0,0.2); color: var(--gold); }
     .indication-label {
       display: flex;
       align-items: center;
@@ -1330,7 +1331,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.24';
+const VERSION = 'v1.25';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -3275,6 +3276,7 @@ function showBidPanel() {
   document.getElementById('bid-summary-view').style.display = 'none';
   document.getElementById('host-bid-for-bar').style.display = 'none';
   document.getElementById('bid-indication').checked = false;
+  selectedMarks = null;
 
   const hb = G.highBid;
   const minNumeric = hb && !hb.isMarks ? hb.amount + 1 : (G.bidMin || 60);
@@ -3335,28 +3337,55 @@ function showBidPanel() {
   amountInput.max = G.bidMax || 87;
 
   document.getElementById('bid-dec').onclick = () => {
+    selectedMarks = null;
+    marksRow.querySelectorAll('.mark-bid-btn').forEach(b => b.classList.remove('selected'));
     amountInput.value = Math.max(minNumeric, parseInt(amountInput.value) - 1);
   };
   document.getElementById('bid-inc').onclick = () => {
+    selectedMarks = null;
+    marksRow.querySelectorAll('.mark-bid-btn').forEach(b => b.classList.remove('selected'));
     amountInput.value = Math.min(G.bidMax || 87, parseInt(amountInput.value) + 1);
   };
 
   document.getElementById('bid-submit').onclick = () => {
     const forIdx = hostBidFor ?? NET.myIdx;
     const trump = bidSelectedTrump;
+
+    if (selectedMarks !== null) {
+      const m = selectedMarks;
+      if (NET.mode === 'client') {
+        sendToHost({ type: 'bid', bid: { isMarks: true, amount: m, trump } });
+        G.awaitingPlayer = null;
+        hideBidPanel();
+        return;
+      }
+      G.highBid = { player: forIdx, isMarks: true, amount: m, trump };
+      G.bidActed[forIdx] = true;
+      G.playerBids[forIdx] = { isMarks: true, amount: m, trump };
+      if (G.gameType === '42') {
+        log(`${pName(forIdx)} bids ${m} mark(s).`, 'highlight');
+      } else {
+        log(`${pName(forIdx)} bids ${m} mark(s) in ${TRUMP_NAMES[trump]}.`, 'highlight');
+      }
+      hostBidFor = null;
+      hideBidPanel();
+      renderPlayerAreas();
+      broadcastState();
+      checkBidEnd();
+      return;
+    }
+
     const amount = parseInt(amountInput.value);
     const indication = G.gameType === '88' ? (document.getElementById('bid-indication')?.checked ?? false) : false;
     if (isNaN(amount) || amount < minNumeric || amount > (G.bidMax || 87)) {
       alert(`Bid must be between ${minNumeric} and ${G.bidMax || 87}.`); return;
     }
-
     if (NET.mode === 'client') {
       sendToHost({ type: 'bid', bid: { isMarks: false, amount, trump, indication } });
       G.awaitingPlayer = null;
       hideBidPanel();
       return;
     }
-
     G.highBid = { player: forIdx, isMarks: false, amount, trump, indication };
     G.bidActed[forIdx] = true;
     G.playerBids[forIdx] = { isMarks: false, amount, trump, indication };
@@ -3382,29 +3411,8 @@ function showBidPanel() {
     btn.className = 'mark-bid-btn';
     btn.textContent = `${m} mark${m > 1 ? 's' : ''}`;
     btn.addEventListener('click', () => {
-      const forIdx = hostBidFor ?? NET.myIdx;
-      const trump = bidSelectedTrump;
-
-      if (NET.mode === 'client') {
-        sendToHost({ type: 'bid', bid: { isMarks: true, amount: m, trump } });
-        G.awaitingPlayer = null;
-        hideBidPanel();
-        return;
-      }
-
-      G.highBid = { player: forIdx, isMarks: true, amount: m, trump };
-      G.bidActed[forIdx] = true;
-      G.playerBids[forIdx] = { isMarks: true, amount: m, trump };
-      if (G.gameType === '42') {
-        log(`${pName(forIdx)} bids ${m} mark(s).`, 'highlight');
-      } else {
-        log(`${pName(forIdx)} bids ${m} mark(s) in ${TRUMP_NAMES[trump]}.`, 'highlight');
-      }
-      hostBidFor = null;
-      hideBidPanel();
-      renderPlayerAreas();
-      broadcastState();
-      checkBidEnd();
+      selectedMarks = m;
+      marksRow.querySelectorAll('.mark-bid-btn').forEach(b => b.classList.toggle('selected', b === btn));
     });
     marksRow.appendChild(btn);
   });
@@ -3545,6 +3553,7 @@ function hideBidControls() {
 let kittyState = { kittySelected: [], handSelected: [] };
 
 let bidSelectedTrump = 0;
+let selectedMarks = null;
 let hostBidFor = null; // player index the host is bidding on behalf of, or null
 function selectBidTrump(i) {
   bidSelectedTrump = i;
