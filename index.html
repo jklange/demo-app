@@ -1305,7 +1305,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.16';
+const VERSION = 'v1.17';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -5522,6 +5522,15 @@ document.addEventListener('touchend', e => {
   if (now - _lastTap < 300) e.preventDefault();
   _lastTap = now;
 }, false);
+
+// Host recovery after screen lock: iOS kills PeerJS's signaling WebSocket when the
+// screen goes dark, so the host's peer ID drops off the server. When the screen wakes
+// up, call peer.reconnect() to re-register the same room code so clients can find us.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (NET.mode !== 'host' || !NET.peer) return;
+  if (NET.peer.disconnected && !NET.peer.destroyed) NET.peer.reconnect();
+});
 </script>
 </body>
 </html>
