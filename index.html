@@ -784,6 +784,13 @@
     }
     #kitty-confirm-btn { margin-top: 2px; }
 
+    /* bid-bar when hosted inside #human-hand-area on larger screens */
+    #bid-in-hand {
+      width: 100%;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+    }
+
     /* round result */
     #result-winner {
       text-align: center;
@@ -1331,7 +1338,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.25';
+const VERSION = 'v1.26';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -3270,9 +3277,25 @@ function buildHalf(val) {
 // ─────────────────────────────────────────────
 function showBidPanel() {
   const overlay = document.getElementById('bid-overlay');
-  overlay.classList.remove('hidden');
-  overlay.classList.add('pulsing');
-  document.getElementById('bid-bar').style.display = '';
+  const bidBar = document.getElementById('bid-bar');
+  const useInHand = window.innerWidth > 600;
+
+  if (useInHand) {
+    // Move #bid-bar into #human-hand-area so controls sit with the dominoes
+    if (!document.getElementById('bid-in-hand')) {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'bid-in-hand';
+      const area = document.getElementById('human-hand-area');
+      area.insertBefore(wrapper, document.getElementById('human-hand'));
+      wrapper.appendChild(bidBar);
+    }
+    bidBar.style.display = '';
+  } else {
+    overlay.classList.remove('hidden');
+    overlay.classList.add('pulsing');
+    bidBar.style.display = '';
+  }
+
   document.getElementById('bid-summary-view').style.display = 'none';
   document.getElementById('host-bid-for-bar').style.display = 'none';
   document.getElementById('bid-indication').checked = false;
@@ -3536,6 +3559,12 @@ function showBidSummary() {
 }
 
 function hideBidPanel() {
+  // If bid-bar was moved into the hand area, restore it to the overlay first
+  const wrapper = document.getElementById('bid-in-hand');
+  if (wrapper) {
+    document.getElementById('bid-overlay').appendChild(document.getElementById('bid-bar'));
+    wrapper.remove();
+  }
   const overlay = document.getElementById('bid-overlay');
   overlay.classList.remove('pulsing');
   document.getElementById('bid-bar').style.display = 'none';
@@ -4181,6 +4210,7 @@ function handleHostMessage(data) {
       } else {
         hideResultPanel();
         if (G.phase !== 'kitty') hideKittyPanel();
+        if (G.phase !== 'bid') hideBidPanel();
         if (G.phase === 'kitty' || G.phase === 'play') showBidSummary();
         if (G.phase === 'bid' && G.awaitingPlayer === NET.myIdx) {
           showBidPanel();
