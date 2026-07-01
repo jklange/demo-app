@@ -306,6 +306,16 @@
       transform: translateY(-6px);
       box-shadow: 0 6px 16px rgba(74,158,255,0.7);
     }
+    .domino.kitty-pending {
+      border-color: var(--gold);
+      transform: translateY(-8px);
+      box-shadow: 0 8px 22px rgba(255,215,0,0.65);
+    }
+    .domino.kitty-swap-target {
+      border-color: #6fcf8a;
+      box-shadow: 0 0 10px rgba(111,207,138,0.5);
+      cursor: pointer;
+    }
     .domino.premove {
       cursor: pointer;
       border-color: #66aaff;
@@ -1359,7 +1369,7 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const VERSION = 'v1.28';
+const VERSION = 'v1.29';
 document.getElementById('menu-version').textContent = VERSION;
 const TRUMP_NAMES = ['Blanks','Aces','Deuces','Treys','Fours','Fives','Sixes','Follow Me'];
 const FOLLOW_ME = 7;
@@ -2967,7 +2977,7 @@ function renderPlayerAreas() {
   // Local human hint + bid badge
   document.getElementById('human-hint').textContent =
     G.phase === 'kitty' && G.bidWinner === NET.myIdx
-      ? 'Kitty — click tiles below to swap (up to 2 pairs), then Confirm & Lead'
+      ? 'Click a Kitty tile, then a hand tile to swap — hit Start Round when done'
       : G.phase === 'bid' && G.awaitingPlayer === NET.myIdx ? 'Your turn to bid!'
       : G.awaitingPlayer === NET.myIdx ? 'Your turn — click a highlighted domino'
       : G.phase === 'play' && preMove ? 'Pre-selected — will auto-play when your turn'
@@ -3092,6 +3102,8 @@ function renderHumanHand() {
   }
 
   if (G.phase === 'kitty' && G.bidWinner === NET.myIdx) {
+    const pendingKi = kittyState.pendingKittyIdx;
+
     // Kitty tiles on the left
     const kittyLbl = document.createElement('span');
     kittyLbl.className = 'kitty-inline-label';
@@ -3102,14 +3114,9 @@ function renderHumanHand() {
       const wrap = document.createElement('div');
       wrap.className = 'kitty-domino-wrap';
       const domEl = buildDomino(d, true, false, isTrump(d, G.trump));
+      domEl.dataset.kittyIdx = i;
       domEl.addEventListener('click', () => toggleKittyDomino(i));
-      if (kittyState.kittySelected.includes(i)) {
-        domEl.classList.add('selected');
-        const badge = document.createElement('div');
-        badge.className = 'swap-badge';
-        badge.textContent = '✓';
-        wrap.appendChild(badge);
-      }
+      if (pendingKi === i) domEl.classList.add('kitty-pending');
       wrap.appendChild(domEl);
       container.appendChild(wrap);
     });
@@ -3124,15 +3131,10 @@ function renderHumanHand() {
       const wrap = document.createElement('div');
       wrap.className = 'kitty-domino-wrap';
       const domEl = buildDomino(d, false, false, isTrump(d, G.trump));
-      domEl.style.cursor = 'pointer';
+      domEl.dataset.handIdx = i;
+      domEl.style.cursor = pendingKi !== null ? 'pointer' : 'default';
+      if (pendingKi !== null) domEl.classList.add('kitty-swap-target');
       domEl.addEventListener('click', () => toggleHandDomino(i));
-      if (kittyState.handSelected.includes(i)) {
-        domEl.classList.add('selected');
-        const badge = document.createElement('div');
-        badge.className = 'swap-badge';
-        badge.textContent = '↑';
-        wrap.appendChild(badge);
-      }
       wrap.appendChild(domEl);
       container.appendChild(wrap);
     });
@@ -3601,7 +3603,7 @@ function hideBidControls() {
 }
 
 // kitty
-let kittyState = { kittySelected: [], handSelected: [] };
+let kittyState = { pendingKittyIdx: null };
 
 let bidSelectedTrump = 0;
 let selectedMarks = null;
@@ -3619,27 +3621,17 @@ function selectBidTrump(i) {
   }
 }
 
-function confirmKittySwap() {
-  const ks = kittyState.kittySelected;
-  const hs = kittyState.handSelected;
-  if (ks.length !== hs.length && ks.length > 0) {
-    alert(`Select equal numbers from kitty and hand to swap (${ks.length} kitty, ${hs.length} hand selected).`);
-    return;
-  }
+function startKittyRound() {
   if (NET.mode === 'client') {
-    const kittyIds = ks.map(ki => dominoId(G.kitty[ki]));
-    const handIds  = hs.map(hi => dominoId(G.hands[NET.myIdx][hi]));
-    sendToHost({ type: 'kitty', kittyIds, handIds });
+    sendToHost({
+      type: 'kitty',
+      finalHand: G.hands[NET.myIdx].map(dominoId),
+      finalKitty: G.kitty.map(dominoId)
+    });
     hideKittyPanel();
     return;
   }
-  ks.forEach((ki, idx) => {
-    const hi = hs[idx];
-    const tmp = G.kitty[ki];
-    G.kitty[ki] = G.hands[NET.myIdx][hi];
-    G.hands[NET.myIdx][hi] = tmp;
-  });
-  log(`${pName(NET.myIdx)} swaps ${ks.length} domino(es) with the kitty.`);
+  log(`${pName(NET.myIdx)} begins play.`, 'good');
   hideKittyPanel();
   broadcastState();
   startPlay();
@@ -3647,7 +3639,7 @@ function confirmKittySwap() {
 
 function showKittyPanel() {
   if (document.getElementById('kitty-confirm-btn')) return;
-  kittyState = { kittySelected: [], handSelected: [] };
+  kittyState = { pendingKittyIdx: null };
 
   document.getElementById('kitty-bar').style.display = 'none';
 
@@ -3655,8 +3647,8 @@ function showKittyPanel() {
   const btn = document.createElement('button');
   btn.id = 'kitty-confirm-btn';
   btn.className = 'btn btn-gold';
-  btn.textContent = 'Confirm & Lead';
-  btn.addEventListener('click', confirmKittySwap);
+  btn.textContent = 'Start Round';
+  btn.addEventListener('click', startKittyRound);
   area.appendChild(btn);
 
   renderKittyPanel();
@@ -3667,24 +3659,73 @@ function renderKittyPanel() {
 }
 
 function toggleKittyDomino(i) {
-  const idx = kittyState.kittySelected.indexOf(i);
-  if (idx >= 0) {
-    kittyState.kittySelected.splice(idx, 1);
-  } else {
-    if (kittyState.kittySelected.length >= 2) return;
-    kittyState.kittySelected.push(i);
-  }
+  kittyState.pendingKittyIdx = (kittyState.pendingKittyIdx === i) ? null : i;
   renderKittyPanel();
 }
 
 function toggleHandDomino(i) {
-  const idx = kittyState.handSelected.indexOf(i);
-  if (idx >= 0) {
-    kittyState.handSelected.splice(idx, 1);
+  if (kittyState.pendingKittyIdx === null) return;
+  const ki = kittyState.pendingKittyIdx;
+  kittyState.pendingKittyIdx = null;
+
+  const container = document.getElementById('human-hand');
+  const kittyEl = container ? container.querySelector(`[data-kitty-idx="${ki}"]`) : null;
+  const handEl  = container ? container.querySelector(`[data-hand-idx="${i}"]`)  : null;
+
+  if (kittyEl && handEl) {
+    animateKittySwap(kittyEl, handEl, () => {
+      const tmp = G.kitty[ki];
+      G.kitty[ki] = G.hands[NET.myIdx][i];
+      G.hands[NET.myIdx][i] = tmp;
+      renderKittyPanel();
+    });
   } else {
-    kittyState.handSelected.push(i);
+    const tmp = G.kitty[ki];
+    G.kitty[ki] = G.hands[NET.myIdx][i];
+    G.hands[NET.myIdx][i] = tmp;
+    renderKittyPanel();
   }
-  renderKittyPanel();
+}
+
+function animateKittySwap(el1, el2, onComplete) {
+  const r1 = el1.getBoundingClientRect();
+  const r2 = el2.getBoundingClientRect();
+  const DURATION = 360;
+
+  function makeClone(src, rect) {
+    const c = src.cloneNode(true);
+    c.style.cssText = [
+      `position:fixed`,
+      `left:${rect.left}px`,
+      `top:${rect.top}px`,
+      `width:${rect.width}px`,
+      `height:${rect.height}px`,
+      `margin:0`,
+      `pointer-events:none`,
+      `z-index:9999`,
+      `transition:left ${DURATION}ms ease-in-out,top ${DURATION}ms ease-in-out`
+    ].join(';');
+    document.body.appendChild(c);
+    return c;
+  }
+
+  const c1 = makeClone(el1, r1);
+  const c2 = makeClone(el2, r2);
+  el1.style.visibility = 'hidden';
+  el2.style.visibility = 'hidden';
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    c1.style.left = `${r2.left}px`;
+    c1.style.top  = `${r2.top}px`;
+    c2.style.left = `${r1.left}px`;
+    c2.style.top  = `${r1.top}px`;
+  }));
+
+  setTimeout(() => {
+    c1.remove();
+    c2.remove();
+    onComplete();
+  }, DURATION + 40);
 }
 
 function hideKittyPanel() {
@@ -3695,7 +3736,7 @@ function hideKittyPanel() {
   const hint = document.getElementById('human-hint');
   if (hint) hint.textContent = '';
   document.getElementById('kitty-bar').style.display = 'none';
-  kittyState = { kittySelected: [], handSelected: [] };
+  kittyState = { pendingKittyIdx: null };
 }
 
 function showResultPanel(marksWon) {
@@ -4149,18 +4190,23 @@ function handleClientMessage(conn, data) {
     }
     case 'kitty': {
       if (G.bidWinner !== playerIdx) return;
-      const { kittyIds, handIds } = data;
-      if (kittyIds.length !== handIds.length && kittyIds.length > 0) return;
-      kittyIds.forEach((kId, i) => {
-        const ki = G.kitty.findIndex(d => dominoId(d) === kId);
-        const hi = G.hands[playerIdx].findIndex(d => dominoId(d) === handIds[i]);
-        if (ki >= 0 && hi >= 0) {
-          const tmp = G.kitty[ki];
-          G.kitty[ki] = G.hands[playerIdx][hi];
-          G.hands[playerIdx][hi] = tmp;
-        }
-      });
-      log(`${pName(playerIdx)} swaps ${kittyIds.length} domino(es) with the kitty.`);
+      if (data.finalHand && data.finalKitty) {
+        const allTiles = [...G.hands[playerIdx], ...G.kitty];
+        G.hands[playerIdx] = data.finalHand.map(id => allTiles.find(d => dominoId(d) === id)).filter(Boolean);
+        G.kitty = data.finalKitty.map(id => allTiles.find(d => dominoId(d) === id)).filter(Boolean);
+      } else {
+        const { kittyIds = [], handIds = [] } = data;
+        kittyIds.forEach((kId, i) => {
+          const ki = G.kitty.findIndex(d => dominoId(d) === kId);
+          const hi = G.hands[playerIdx].findIndex(d => dominoId(d) === handIds[i]);
+          if (ki >= 0 && hi >= 0) {
+            const tmp = G.kitty[ki];
+            G.kitty[ki] = G.hands[playerIdx][hi];
+            G.hands[playerIdx][hi] = tmp;
+          }
+        });
+      }
+      log(`${pName(playerIdx)} begins play.`, 'good');
       hideKittyPanel();
       startPlay();
       break;
@@ -5464,7 +5510,7 @@ function hostStartGame() {
 // ─────────────────────────────────────────────
 // EVENT WIRING
 // ─────────────────────────────────────────────
-document.getElementById('kitty-bar-confirm').addEventListener('click', confirmKittySwap);
+document.getElementById('kitty-bar-confirm').addEventListener('click', startKittyRound);
 
 document.getElementById('result-show-hands').addEventListener('click', () => {
   const handsDiv = document.getElementById('result-hands');
